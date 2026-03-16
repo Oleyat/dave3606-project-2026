@@ -31,7 +31,7 @@ def sets():
 
     utfEncondings = ["UTF-8", "UTF-16-LE", "UTF-16-BE", "UTF-32-LE", "UTF-32-BE"]
     getEncoding = request.args.get('encoding')
-    if (getEncoding  not in utfEncondings):
+    if (getEncoding is None or getEncoding.upper() not in utfEncondings):
         getEncoding = "UTF-8"
 
     start_time = perf_counter()
@@ -50,8 +50,9 @@ def sets():
 
     page_html = template.replace("{ROWS}", rows)
     page_html = page_html.encode(encoding=getEncoding)
-    
-    return Response(page_html, content_type=f"text/html; charset={getEncoding}")
+    gzip_page_html = gzip.compress(page_html)
+
+    return Response(gzip_page_html, headers={"Content-Encoding": "gzip"}, content_type=f"text/html; charset={getEncoding.upper()}")
 
 
 @app.route("/set")
