@@ -54,8 +54,27 @@ def legoSet():  # We don't want to call the function `set`, since that would hid
 def apiSet():
     set_id = request.args.get("id")
     result = {"set_id": set_id}
+
+    try:
+        conn = psycopg.connect(**DB_CONFIG)
+        with conn.cursor() as cur:
+            cur.execute("select id, name, COALESCE(year::text, ''), category, preview_image_url from lego_set where id = %s", (set_id,))
+            row = cur.fetchone()
+            if row is not None:
+                result["name"] = html.escape(row[1])
+                result["year"] = html.escape(row[2]) # kan bli null pga html.escape.
+                result["category"] = html.escape(row[3])
+                result["preview_image_url"] = html.escape(row[4])
+    finally:
+        conn.close()
     json_result = json.dumps(result, indent=4)
     return Response(json_result, content_type="application/json")
+
+
+
+@app.route("/api/binary/set")
+def apiBinarySet():
+    return 0;
 
 
 if __name__ == "__main__":
