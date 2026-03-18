@@ -1,6 +1,7 @@
 import json
 import html
 import psycopg
+import struct
 from flask import Flask, Response, request
 from time import perf_counter
 
@@ -74,7 +75,34 @@ def apiSet():
 
 @app.route("/api/binary/set")
 def apiBinarySet():
-    return 0;
+    set_id = request.args.get("id")
+    result = {"set_id": set_id}
+    
+    try:
+        conn = psycopg.connect(**DB_CONFIG)
+        with conn.cursor() as cur:
+            cur.execute("select id, name, COALESCE(year::text, ''), category, preview_image_url from lego_set where id = %s", (set_id,))
+            row = cur.fetchone()
+            if row is not None:
+                result["name"] = html.escape(row[1])
+                result["year"] = html.escape(row[2]) # kan bli null pga html.escape.
+                result["category"] = html.escape(row[3])
+                result["preview_image_url"] = html.escape(row[4])
+    finally:
+        conn.close()
+    
+    svar = struct.pack("I", len(result["set_id"]))
+    svar += result["set_id"].encode("utf-8")
+    svar += struct.pack(">I", len(result["name"])) 
+    svar += result["name"].encode("utf-8")
+    svar += struct.pack(">H", len(result["year"])) 
+    svar += result["year"].encode("utf-8")
+    svar += struct.pack(">I", len(result["category"])) 
+    svar += result["category"].encode("utf-8")
+    svar += struct.pack(">I", len(result["preview_image_url"])) 
+    svar += result["preview_image_url"].encode("utf-8")
+
+    return Response(svar, content_type="application/octet-stream")
 
 
 if __name__ == "__main__":
