@@ -23,11 +23,10 @@ cur.execute(
 cur.execute(
     """
     create table lego_brick(
-        brick_id text not null,
         brick_type_id text not null,
         color_id int not null,
         name text not null,
-        preview_image_url text null
+        preview_image_url text null,
         primary key (brick_type_id, color_id)
     );
     """
@@ -35,12 +34,13 @@ cur.execute(
 cur.execute(
     """
     create table lego_inventory(
-        inventory_id text not null primary key SERIAL,
-        set_id text not null foreign key,
-        brick_type_id text not null foreign key,
+        set_id text not null,
+        brick_type_id text not null,
         color_id int not null,
-        count int not null
-        primary key (set_id, brick_type_id, color_id)
+        count int not null,
+        primary key (set_id, brick_type_id, color_id),
+        foreign key (set_id) references lego_set(id),
+        foreign key (brick_type_id, color_id) references lego_brick(brick_type_id, color_id)
     );
     """
 )
