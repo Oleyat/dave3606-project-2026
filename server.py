@@ -54,18 +54,30 @@ def legoSet():  # We don't want to call the function `set`, since that would hid
 @app.route("/api/set")
 def apiSet():
     set_id = request.args.get("id")
-    result = {"set_id": set_id}
-
+    result = {"set_id": set_id,
+            "name": "",
+            "year": "",
+            "category": "",
+            "preview_image_url": "",
+            "inventory": []}
+    inventory = []
     try:
         conn = psycopg.connect(**DB_CONFIG)
         with conn.cursor() as cur:
-            cur.execute("select id, name, COALESCE(year::text, ''), category, preview_image_url from lego_set where id = %s", (set_id,))
+#   cur.execute("select id, name, COALESCE(year::text, ''), category, preview_image_url from lego_set where id = %s", (set_id,))
+            cur.execute("SELECT s.id, s.name, COALESCE(s.year::text, ''), s.category, s.preview_image_url, inv.brick_type_id, inv.color_id, inv.count FROM lego_set s LEFT JOIN lego_inventory inv ON s.id=inv.set_id WHERE s.id = %s", (set_id,))
             row = cur.fetchone()
             if row is not None:
                 result["name"] = html.escape(row[1])
                 result["year"] = html.escape(row[2]) # kan bli null pga html.escape.
                 result["category"] = html.escape(row[3])
                 result["preview_image_url"] = html.escape(row[4])
+            for row in cur:
+                result["inventory"].append({
+                    "brick_type_id": html.escape(row[5]),
+                    "color_id": html.escape(str(row[6])),
+                    "count": html.escape(str(row[7]))
+                })
     finally:
         conn.close()
     json_result = json.dumps(result, indent=4)
