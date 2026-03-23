@@ -26,11 +26,16 @@ def sets():
     template = open("templates/sets.html").read()
     rows = []
 
+    # use paginator to only fetch 50 sets at a time for improved rendering performance 
+    page = int(request.args.get("page", 1))
+    page_size = 50
+    offset = (page - 1) * page_size
+
     start_time = perf_counter()
     conn = psycopg.connect(**DB_CONFIG)
     try:
         with conn.cursor() as cur:
-            cur.execute("SELECT id, name FROM lego_set ORDER BY id ")
+            cur.execute("SELECT id, name FROM lego_set ORDER BY id LIMIT %s OFFSET %s", (page_size, offset))
             for row in cur.fetchall():
                 html_safe_id = html.escape(row[0])
                 html_safe_name = html.escape(row[1])
