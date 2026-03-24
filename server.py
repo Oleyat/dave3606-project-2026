@@ -43,7 +43,7 @@ def sets():
         rows = get_all_sets(db)
         print(f"Time to render all sets: {perf_counter() - start_time}")
     finally:
-        db.close
+        db.close()
 
 
     page_html = template.replace("{ROWS}", rows)
