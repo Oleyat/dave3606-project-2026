@@ -29,7 +29,7 @@ def sets():
         template = f.read()
     rows = []
 
-    utfEncondings = ["UTF-8", "UTF-16-LE", "UTF-16-BE", "UTF-32-LE", "UTF-32-BE"]
+    utfEncondings = ["UTF-8", "UTF-16", "UTF-16"]
     getEncoding = request.args.get('encoding')
     if (getEncoding is None or getEncoding.upper() not in utfEncondings):
         getEncoding = "UTF-8"
@@ -49,6 +49,7 @@ def sets():
         conn.close()
 
     page_html = render_template("sets.html", rows=rows)
+    page_html = page_html.replace("{CHARSET}", getEncoding)
     page_html = page_html.encode(encoding=getEncoding)
     gzip_page_html = gzip.compress(page_html)
 
