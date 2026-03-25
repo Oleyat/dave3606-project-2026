@@ -9,17 +9,25 @@ from database import Database
 
 app = Flask(__name__)
 
-def get_all_sets(db): #returns fully rendered html string with all sets
+def get_all_sets(db, page=1, limit=50): #returns fully rendered html string with all sets
+    offset = (page - 1) * limit
     rows = []
-    query = "SELECT id, name FROM lego_set order by id"
-    results = db.execute_and_fetch_all(query)
+    query = "SELECT id, name, year, category, preview_image_url FROM lego_set order by id LIMIT %s OFFSET %s"
+    results = db.execute_and_fetch_all(query, (limit, offset))
+
+    count_query = "SELECT COUNT(*) FROM lego_set"
+    total = db.execute_and_fetch_all(count_query)[0][0]
+    total_pages = (total + limit - 1) // limit
 
     for row in results:
         rows.append({  #no need to html.escape here, since Jinja will do it for us when we render the template.
             "id": row[0],
-            "name": row[1]
+            "name": row[1],
+            "year": row[2],
+            "category": row[3],
+            "preview_image_url": row[4]
         })
-    page_html = render_template("sets.html", rows=rows)
+    page_html = render_template("sets.html", rows=rows, page=page, total_pages=total_pages, limit=limit)
     return page_html
 
 def get_set_and_inventory(db, set_id): #returns a json string with information about set and inventiry.
@@ -31,9 +39,10 @@ def get_set_and_inventory(db, set_id): #returns a json string with information a
             "inventory": []}
     
     query = """
-        SELECT s.id, s.name, COALESCE(s.year::text, ''), s.category, s.preview_image_url, inv.brick_type_id, inv.color_id, inv.count 
+        SELECT s.id, s.name, COALESCE(s.year::text, ''), s.category, s.preview_image_url, inv.brick_type_id, inv.color_id, inv.count, b.name, b.preview_image_url
         FROM lego_set s 
         LEFT JOIN lego_inventory inv ON s.id=inv.set_id 
+        LEFT JOIN lego_brick b ON inv.brick_type_id = b.brick_type_id AND inv.color_id = b.color_id
         WHERE s.id = %s
     """
     rows = db.execute_and_fetch_all(query, (set_id,))
@@ -47,7 +56,9 @@ def get_set_and_inventory(db, set_id): #returns a json string with information a
             result["inventory"].append({
             "brick_type_id": html.escape(str(row[5])),
             "color_id": html.escape(str(row[6])),
-            "count": html.escape(str(row[7]))
+            "count": html.escape(str(row[7])),
+            "name": html.escape(str(row[8])),
+            "preview_image_url": html.escape(str(row[9]))
         })
     json_result = json.dumps(result, indent=4)
     return json_result
@@ -74,10 +85,12 @@ def index():
 def sets():
     db = Database()
     getEncoding = request.args.get('encoding')
+    page = int(request.args.get('page', 1))
+    limit = int(request.args.get('limit', 50))
     start_time = perf_counter()
     try:
-        page_html = get_all_sets(db)
-        print(f"Time to render all sets: {perf_counter() - start_time}")
+        page_html = get_all_sets(db, page, limit)
+        print(f"Time to render sets page {page}: {perf_counter() - start_time}")
     finally:
         db.close()
 

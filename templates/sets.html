@@ -5,9 +5,9 @@
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
         <title>All Lego sets</title>
         <style>
-            body { font-family: system-ui, sans-serif; max-width: 600px; margin: 2rem auto; padding: 0 1rem; }
+            body { font-family: system-ui, sans-serif; max-width: 1000px; margin: 2rem auto; padding: 0 1rem; }
             table { width: 100%; border-collapse: collapse; margin-top: 1rem; }
-            th, td { text-align: left; padding: 0.5rem; border-bottom: 1px solid #ddd; }
+            th, td { text-align: left; padding: 0.75rem; border-bottom: 1px solid #ddd; }
             th { font-weight: 600; }
         </style>
     </head>
@@ -15,16 +15,30 @@
         <h1>All Lego sets</h1>
         <table>
             <thead>
-                <tr><th>Id</th><th>Name</th></tr>
+                <tr><th><th>Id</th><th>Name</th><th>Year</th><th>Category</th></tr>
             </thead>
             <tbody>
                 {% for row in rows %}
                 <tr>
+                    <td>{% if row.preview_image_url %}<img src="{{ row.preview_image_url }}" height="80">{% endif %}</td>
                     <td><a href="/set?id={{ row.id }}">{{ row.id }}</a></td>
                     <td>{{ row.name }}</td>
+                    <td>{{ row.year }}</td>
+                    <td>{{ row.category }}</td>
                 </tr>
                 {% endfor %}
             </tbody>
         </table>
+        {% if total_pages > 1 %}
+        <div style="margin-top: 1rem; text-align: center;">
+            {% if page > 1 %}
+            <a href="?page={{ page-1 }}&limit={{ limit }}" style="margin-right: 1rem;">Previous</a>
+            {% endif %}
+            Page {{ page }} of {{ total_pages }}
+            {% if page < total_pages %}
+            <a href="?page={{ page+1 }}&limit={{ limit }}" style="margin-left: 1rem;">Next</a>
+            {% endif %}
+        </div>
+        {% endif %}
     </body>
 </html>
