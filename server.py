@@ -71,9 +71,9 @@ def apiSet():
                 result["year"] = html.escape(firstrow[2]) # kan bli null pga html.escape.
                 result["category"] = html.escape(firstrow[3])
                 result["preview_image_url"] = html.escape(firstrow[4])
-            for row in rows:
-                result["inventory"].append({
-                    "brick_type_id": html.escape(row[5]),
+                for row in rows:
+                    result["inventory"].append({
+                    "brick_type_id": html.escape(str(row[5])),
                     "color_id": html.escape(str(row[6])),
                     "count": html.escape(str(row[7]))
                 })
@@ -115,22 +115,22 @@ def apiBinarySet():
 
                 data.append(struct.pack(">H", len(firstrow[4])))
                 data.append(firstrow[4].encode("utf-8")) #preview_image_url
-            for row in rows:
-                if(row[6] < 255 and row[7] < 256):
-                    data.append(struct.pack(">BB", row[6], row[7])) 
-                else:
-                    data.append(struct.pack(">BBH", 255,row[6], row[7])) #color_id, count #max col 255 max count 3100
-                if(row[5].isdigit() and int(row[5]) < 65536): # #ingen brick_type_id er over 50 karakterer
-                    diglen = 100 + len(row[5])
-                    data.append(struct.pack(">B", diglen))
-                    data.append(struct.pack(">H", int(row[5])))
-                elif(row[5].isdigit() and int(row[5]) < 4294967296):
-                    diglen = 200 + len(row[5])
-                    data.append(struct.pack(">B", diglen))
-                    data.append(struct.pack(">I", int(row[5])))
-                else:
-                    data.append(struct.pack(">B", len(row[5]))) 
-                    data.append(str(row[5]).encode("utf-8"))
+                for row in rows:
+                    if(row[6] < 255 and row[7] < 256):
+                        data.append(struct.pack(">BB", row[6], row[7])) 
+                    else:
+                        data.append(struct.pack(">BBH", 255,row[6], row[7])) #color_id, count #max col 255 max count 3100
+                    if(row[5].isdigit() and int(row[5]) < 65536): # #ingen brick_type_id er over 50 karakterer
+                        diglen = 100 + len(row[5])
+                        data.append(struct.pack(">B", diglen))
+                        data.append(struct.pack(">H", int(row[5])))
+                    elif(row[5].isdigit() and int(row[5]) < 4294967296):
+                        diglen = 200 + len(row[5])
+                        data.append(struct.pack(">B", diglen))
+                        data.append(struct.pack(">I", int(row[5])))
+                    else:
+                        data.append(struct.pack(">B", len(row[5]))) 
+                        data.append(str(row[5]).encode("utf-8"))
     finally:
         conn.close()
     
