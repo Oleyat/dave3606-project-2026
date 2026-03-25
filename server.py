@@ -20,6 +20,37 @@ def get_all_sets(db): #returns a list of dicts, where each dict has keys "id" an
         })
     return rows
 
+def get_set_and_inventory(db, set_id):
+    result = {"set_id": set_id,
+            "name": "",
+            "year": "",
+            "category": "",
+            "preview_image_url": "",
+            "inventory": []}
+    
+    query = """
+        SELECT s.id, s.name, COALESCE(s.year::text, ''), s.category, s.preview_image_url, inv.brick_type_id, inv.color_id, inv.count 
+        FROM lego_set s 
+        LEFT JOIN lego_inventory inv ON s.id=inv.set_id 
+        WHERE s.id = %s
+    """
+    rows = db.execute_and_fetch_all(query, (set_id,))
+    firstrow = rows[0]
+    if firstrow is not None:
+        result["name"] = html.escape(firstrow[1])
+        result["year"] = html.escape(firstrow[2]) # kan bli null pga html.escape.
+        result["category"] = html.escape(firstrow[3])
+        result["preview_image_url"] = html.escape(firstrow[4])
+        for row in rows:
+            result["inventory"].append({
+            "brick_type_id": html.escape(str(row[5])),
+            "color_id": html.escape(str(row[6])),
+            "count": html.escape(str(row[7]))
+        })
+    json_result = json.dumps(result, indent=4)
+    return json_result
+
+
 @app.route("/")
 def index():
     with open("templates/index.html", 'r') as f:
@@ -59,36 +90,16 @@ def legoSet():  # We don't want to call the function `set`, since that would hid
     with open("templates/set.html", 'r') as f:
         template = f.read()
     return Response(template)
-
+ 
 
 @app.route("/api/set")
 def apiSet():
+    db = Database()
     set_id = request.args.get("id")
-    result = {"set_id": set_id,
-            "name": "",
-            "year": "",
-            "category": "",
-            "preview_image_url": "",
-            "inventory": []}
     try:
-        conn = psycopg.connect(**DB_CONFIG)
-        with conn.cursor() as cur:
-            cur.execute("SELECT s.id, s.name, COALESCE(s.year::text, ''), s.category, s.preview_image_url, inv.brick_type_id, inv.color_id, inv.count FROM lego_set s LEFT JOIN lego_inventory inv ON s.id=inv.set_id WHERE s.id = %s", (set_id,))
-            rows = cur.fetchall()
-            firstrow = rows[0]
-            if firstrow is not None:
-                result["name"] = html.escape(firstrow[1])
-                result["year"] = html.escape(firstrow[2]) # kan bli null pga html.escape.
-                result["category"] = html.escape(firstrow[3])
-                result["preview_image_url"] = html.escape(firstrow[4])
-                for row in rows:
-                    result["inventory"].append({
-                    "brick_type_id": html.escape(str(row[5])),
-                    "color_id": html.escape(str(row[6])),
-                    "count": html.escape(str(row[7]))
-                })
+        result = get_set_and_inventory(db, set_id)
     finally:
-        conn.close()
+        db.close()
     json_result = json.dumps(result, indent=4)
     return Response(json_result, content_type="application/json")
 
