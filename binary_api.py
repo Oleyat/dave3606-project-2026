@@ -83,14 +83,14 @@ while offset + 2 < len(res.content):
     else:
         brick_type_id = readData(">B")
 
-    #brick_image_url = readData(">H") # venter på svar om vi må ha disse med eller ikke, fjern kommentarer for å få bildet sendt.
+    brick_image_url = readData(">H") # venter på svar om vi må ha disse med eller ikke, fjern kommentarer for å få bildet sendt.
 
     result["inventory"].append({
         "brick_type_id": brick_type_id,
         "color_id": color_id,
         "count": count,
-        # "preview_image_url": brick_image_url # venter på svar om vi må ha disse med eller ikke, fjern kommentarer for å få bildet sendt.
-    })
+        "preview_image_url": f"https://img.bricklink.com/{brick_image_url}.jpg" # venter på svar om vi må ha disse med eller ikke, fjern kommentarer for å få bildet sendt.
+    })                          # sparer 25 bytes per image ved å kun sende unike delen.
 
 with open(f"{filename}.json", "w") as f:
     json.dump(result, f, indent=4)

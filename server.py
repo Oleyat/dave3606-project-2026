@@ -173,8 +173,25 @@ def apiBinarySet():
             data.append(struct.pack(">B", len(row["brick_type_id"]))) 
             data.append(str(row["brick_type_id"]).encode("utf-8"))
         # venter på svar om vi må ha disse med eller ikke, fjern kommentarer for å få bildet sendt.
-        #data.append(struct.pack(">H", len(row["preview_image_url"])))
-        #data.append(row["preview_image_url"].encode("utf-8")) #preview_image_url
+        unik_image = row["preview_image_url"][26:-4] # 26 bytes på duplikat tekst for hver eneste brikke.
+        siste_del = row["preview_image_url"][28:-4] 
+        
+        if(siste_del.isdigit() and int(siste_del) < 65536): # #ingen brick_type_id er over 50 karakterer
+            diglen = 100 + len(siste_del)
+            data.append(struct.pack(">B", diglen))
+            data.append(struct.pack(">H", int(row["brick_type_id"])))
+        elif(row["brick_type_id"].isdigit() and int(row["brick_type_id"]) < 4294967296):
+            diglen = 200 + len(row["brick_type_id"])
+            data.append(struct.pack(">B", diglen))
+            data.append(struct.pack(">I", int(row["brick_type_id"])))
+        else:
+            data.append(struct.pack(">B", len(row["brick_type_id"]))) 
+            data.append(str(row["brick_type_id"]).encode("utf-8"))
+
+        data.append(struct.pack(">H", len(unik_image)))
+        data.append(unik_image.encode("utf-8")) #preview_image_url
+
+        #se om jeg får gjort om hvis det kun er tall til å sende tallene separat.
     
     string = b"".join(data)
     return Response(string, content_type="application/octet-stream")

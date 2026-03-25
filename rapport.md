@@ -91,6 +91,7 @@ Dermed ender vi opp med følgende filformat:
   
 For eksempel for lego-set: `71799-1` i browser får du da respons på ca `187880` bytes mens med vår binær respons får du kun `10053` bytes altså ca 18.5 ganger mindre.
 > oppdater med verdiene: 431kb og 78kb om vi har med bilde til brikkene
+> Etter optimalisering av image url så har vi fått ned til 29608
 
 
 ## 6. Frontend and Caching
