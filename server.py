@@ -52,13 +52,6 @@ def get_set_and_inventory(db, set_id): #returns a json string with information a
     json_result = json.dumps(result, indent=4)
     return json_result
 
-
-@app.route("/")
-def index():
-    with open("templates/index.html", 'r') as f:
-        template = f.read()
-    return Response(template)
-
 def encode_page_html(page_html, encoding): #returns gzipped html encoded in the specified encoding.
     utfEncondings = ["UTF-8", "UTF-16", "UTF-16"]
     if (encoding is None or encoding.upper() not in utfEncondings):
@@ -69,6 +62,13 @@ def encode_page_html(page_html, encoding): #returns gzipped html encoded in the 
     gzip_page_html = gzip.compress(page_html)    
 
     return gzip_page_html,encoding.upper()
+
+
+@app.route("/")
+def index():
+    with open("templates/index.html", 'r') as f:
+        template = f.read()
+    return Response(template)
 
 @app.route("/sets")
 def sets():
@@ -116,7 +116,6 @@ def apiSet():
     if len(set_cache) > MAX_CACHE_SIZE:
         oldest_key = next(iter(set_cache))
         del set_cache[oldest_key]
-
     return Response(result, content_type="application/json")
 
 
