@@ -1,7 +1,7 @@
 import json
 import html
 import psycopg
-from flask import Flask, Response, request
+from flask import Flask, Response, render_template, request
 from time import perf_counter
 import gzip
 
@@ -40,14 +40,15 @@ def sets():
         with conn.cursor() as cur:
             cur.execute("SELECT id, name FROM lego_set ORDER BY id")
             for row in cur.fetchall():
-                html_safe_id = html.escape(row[0])
-                html_safe_name = html.escape(row[1])
-                rows.append( f'<tr><td><a href="/set?id={html_safe_id}">{html_safe_id}</a></td><td>{html_safe_name}</td></tr>\n')
+                rows.append({  #no need to html.escape here, since Jinja will do it for us when we render the template.
+                    "id": row[0],
+                    "name": row[1]
+                    })
         print(f"Time to render all sets: {perf_counter() - start_time}")
     finally:
         conn.close()
 
-    page_html = template.replace("{ROWS}", "".join(rows))
+    page_html = render_template("sets.html", rows=rows)
     page_html = page_html.encode(encoding=getEncoding)
     gzip_page_html = gzip.compress(page_html)
 
