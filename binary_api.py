@@ -20,7 +20,8 @@ formats = {
     "B": 1,
     ">B": 1,
     ">H": 2,
-    ">I": 4
+    ">I": 4,
+    ">BB": 2
 }
 
 def retLen(offset, format):
@@ -30,10 +31,18 @@ def retData(offset, length):
     return res.content[offset:offset+length].decode("utf-8")
 
 def readData(format):
+    # utf8 encoded data
     global offset
     length = retLen(offset, format)
     offset += formats[format]
     binData = retData(offset, length)
+    offset += length
+    return binData
+def readDataRaw(format):
+    # integer data
+    global offset
+    length = formats[format]
+    binData = res.content[offset:offset+length]
     offset += length
     return binData
 
@@ -43,9 +52,7 @@ result["set_id"] = readData("B")
 
 result["name"] = readData(">B")
 
-result["year"] = struct.unpack_from(">H", res.content, offset)[0]
-
-offset += 2
+result["year"] = readDataRaw(">H")[0]
 
 result["category"] = readData(">B")
 
@@ -59,31 +66,22 @@ while offset + 2 < len(res.content):
     mix = res.content[offset]
     if (mix==255): # sjekk om kontroll byte
         offset += 1
-
-        color_id = struct.unpack_from(">B", res.content, offset)[0]
-        offset += 1
-        count = struct.unpack_from(">H", res.content, offset)[0]
-        offset +=2
+        color_id = readDataRaw(">B")[0]
+        count = readDataRaw(">H")[0]
         
     else:
-        color_id, count = struct.unpack_from(">BB", res.content, offset)
-        offset += 2
+        color_id, count = readDataRaw(">BB")
     digcheck = res.content[offset]
     if(digcheck >= 100 and digcheck < 200): # tall under 2^16
         offset += 1
         digint = digcheck - 100
-        brick_type_id = str(struct.unpack_from(">H", res.content, offset)[0])
-        offset += 2
+        brick_type_id = str(readDataRaw(">H")[0])
     elif(digcheck >= 200): # 200 er for tall over 2^16
         offset += 1
         digint = digcheck - 200
-        brick_type_id = str(struct.unpack_from(">I", res.content, offset)[0])
-        offset += 4
+        brick_type_id = str(readDataRaw(">I")[0])
     else:
-        length = retLen(offset, ">B")
-        offset += 1
-        brick_type_id = retData(offset, length)
-        offset += length
+        brick_type_id = readData(">B")
 
     result["inventory"].append({
         "brick_type_id": brick_type_id,
