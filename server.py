@@ -169,8 +169,9 @@ def apiBinarySet():
         else:
             data.append(struct.pack(">B", len(row["brick_type_id"]))) 
             data.append(str(row["brick_type_id"]).encode("utf-8"))
-        data.append(struct.pack(">H", len(row["preview_image_url"])))
-        data.append(row["preview_image_url"].encode("utf-8")) #preview_image_url
+        # venter på svar om vi må ha disse med eller ikke, fjern kommentarer for å få bildet sendt.
+        #data.append(struct.pack(">H", len(row["preview_image_url"])))
+        #data.append(row["preview_image_url"].encode("utf-8")) #preview_image_url
     
     string = b"".join(data)
     return Response(string, content_type="application/octet-stream")

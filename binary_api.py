@@ -89,7 +89,7 @@ while offset + 2 < len(res.content):
         "brick_type_id": brick_type_id,
         "color_id": color_id,
         "count": count,
-        "preview_image_url": brick_image_url
+       # "preview_image_url": brick_image_url
     })
 
 with open(f"{filename}.json", "w") as f:
