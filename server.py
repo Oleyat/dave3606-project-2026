@@ -9,10 +9,15 @@ from database import Database
 
 app = Flask(__name__)
 
-def get_all_sets(db): #returns fully rendered html string with all sets
+def get_all_sets(db, page=1, limit=50): #returns fully rendered html string with all sets
+    offset = (page - 1) * limit
     rows = []
-    query = "SELECT id, name, year, category, preview_image_url FROM lego_set order by id"
-    results = db.execute_and_fetch_all(query)
+    query = "SELECT id, name, year, category, preview_image_url FROM lego_set order by id LIMIT %s OFFSET %s"
+    results = db.execute_and_fetch_all(query, (limit, offset))
+
+    count_query = "SELECT COUNT(*) FROM lego_set"
+    total = db.execute_and_fetch_all(count_query)[0][0]
+    total_pages = (total + limit - 1) // limit
 
     for row in results:
         rows.append({  #no need to html.escape here, since Jinja will do it for us when we render the template.
@@ -22,7 +27,7 @@ def get_all_sets(db): #returns fully rendered html string with all sets
             "category": row[3],
             "preview_image_url": row[4]
         })
-    page_html = render_template("sets.html", rows=rows)
+    page_html = render_template("sets.html", rows=rows, page=page, total_pages=total_pages, limit=limit)
     return page_html
 
 def get_set_and_inventory(db, set_id): #returns a json string with information about set and inventiry.
@@ -80,10 +85,12 @@ def index():
 def sets():
     db = Database()
     getEncoding = request.args.get('encoding')
+    page = int(request.args.get('page', 1))
+    limit = int(request.args.get('limit', 50))
     start_time = perf_counter()
     try:
-        page_html = get_all_sets(db)
-        print(f"Time to render all sets: {perf_counter() - start_time}")
+        page_html = get_all_sets(db, page, limit)
+        print(f"Time to render sets page {page}: {perf_counter() - start_time}")
     finally:
         db.close()
 
