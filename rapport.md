@@ -86,9 +86,11 @@ Dermed ender vi opp med følgende filformat:
 | Bytes |  Minst 1 |Minst 1|2|Minst 1|Minst 1|Minst 1|1 |2 & 1| 1|
 | Format | Variabel, max 255 bokstaver | Variabel, max 255 bokstaver | >H | Variabel, max 255 bokstaver | Variabel, max 255 bokstaver |Variabel, max 255 bokstaver & >B eller >H|>B| >B & >H| >B |
 ######    kontroll brukes som signal byte for color_id, count, og brick_type_id sine optimaliseringer.
+> preview_image_url kommer fra lego_set og lego brikkene, USIKKER OM VI SKAL HA DEN MED FOR BRIKKER !!!
 
   
 For eksempel for lego-set: `71799-1` i browser får du da respons på ca `187880` bytes mens med vår binær respons får du kun `10053` bytes altså ca 18.5 ganger mindre.
+> oppdater med verdiene: 431kb og 78kb om vi har med bilde til brikkene
 
 
 ## 6. Frontend and Caching

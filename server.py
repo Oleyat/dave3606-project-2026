@@ -137,52 +137,44 @@ def apiSet():
 @app.route("/api/binary/set")
 def apiBinarySet():
     set_id = request.args.get("id")
-    result = {"set_id": set_id,
-            "name": "",
-            "year": "",
-            "category": "",
-            "preview_image_url": "",
-            "inventory": []}
-    data = []
-
+    db = Database()
     try:
-        conn = psycopg.connect(**DB_CONFIG)
-        with conn.cursor() as cur:
-            cur.execute("SELECT s.id, s.name, COALESCE(s.year::text, ''), s.category, s.preview_image_url, inv.brick_type_id, inv.color_id, inv.count FROM lego_set s LEFT JOIN lego_inventory inv ON s.id=inv.set_id WHERE s.id = %s", (set_id,))
-            rows = cur.fetchall()
-            firstrow = rows[0]
-            if firstrow is not None:
-                data.append(struct.pack("B", len(result["set_id"])))
-                data.append(result["set_id"].encode("utf-8")) #set_id
-
-                data.append(struct.pack(">B", len(firstrow[1])))
-                data.append(firstrow[1].encode("utf-8")) #name
-
-                data.append(struct.pack(">H", int(firstrow[2])))
-
-                data.append(struct.pack(">B", len(firstrow[3])))
-                data.append(firstrow[3].encode("utf-8")) #category
-
-                data.append(struct.pack(">H", len(firstrow[4])))
-                data.append(firstrow[4].encode("utf-8")) #preview_image_url
-                for row in rows:
-                    if(row[6] < 255 and row[7] < 256):
-                        data.append(struct.pack(">BB", row[6], row[7])) 
-                    else:
-                        data.append(struct.pack(">BBH", 255,row[6], row[7])) #color_id, count #max col 255 max count 3100
-                    if(row[5].isdigit() and int(row[5]) < 65536): # #ingen brick_type_id er over 50 karakterer
-                        diglen = 100 + len(row[5])
-                        data.append(struct.pack(">B", diglen))
-                        data.append(struct.pack(">H", int(row[5])))
-                    elif(row[5].isdigit() and int(row[5]) < 4294967296):
-                        diglen = 200 + len(row[5])
-                        data.append(struct.pack(">B", diglen))
-                        data.append(struct.pack(">I", int(row[5])))
-                    else:
-                        data.append(struct.pack(">B", len(row[5]))) 
-                        data.append(str(row[5]).encode("utf-8"))
+        result = json.loads(get_set_and_inventory(db, set_id))
     finally:
-        conn.close()
+        db.close()
+    data = []
+    data.append(struct.pack("B", len(set_id)))
+    data.append(set_id.encode("utf-8")) #set_id
+
+    data.append(struct.pack(">B", len(result["name"])))
+    data.append(result["name"].encode("utf-8")) #name
+
+    data.append(struct.pack(">H", int(result["year"])))
+
+    data.append(struct.pack(">B", len(result["category"])))
+    data.append(result["category"].encode("utf-8")) #category
+
+    data.append(struct.pack(">H", len(result["preview_image_url"])))
+    data.append(result["preview_image_url"].encode("utf-8")) #preview_image_url
+    for row in result["inventory"]:
+        if(int(row["color_id"]) < 255 and int(row["count"]) < 256):
+            data.append(struct.pack(">BB", int(row["color_id"]), int(row["count"]))) 
+        else:
+            data.append(struct.pack(">BBH", 255,int(row["color_id"]), int(row["count"]))) #color_id, count #max col 255 max count 3100
+        if(row["brick_type_id"].isdigit() and int(row["brick_type_id"]) < 65536): # #ingen brick_type_id er over 50 karakterer
+            diglen = 100 + len(row["brick_type_id"])
+            data.append(struct.pack(">B", diglen))
+            data.append(struct.pack(">H", int(row["brick_type_id"])))
+        elif(row["brick_type_id"].isdigit() and int(row["brick_type_id"]) < 4294967296):
+            diglen = 200 + len(row["brick_type_id"])
+            data.append(struct.pack(">B", diglen))
+            data.append(struct.pack(">I", int(row["brick_type_id"])))
+        else:
+            data.append(struct.pack(">B", len(row["brick_type_id"]))) 
+            data.append(str(row["brick_type_id"]).encode("utf-8"))
+        # venter på svar om vi må ha disse med eller ikke, fjern kommentarer for å få bildet sendt.
+        #data.append(struct.pack(">H", len(row["preview_image_url"])))
+        #data.append(row["preview_image_url"].encode("utf-8")) #preview_image_url
     
     string = b"".join(data)
     return Response(string, content_type="application/octet-stream")
