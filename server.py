@@ -112,16 +112,19 @@ def apiSet():
     set_id = request.args.get("id")
 
     # Sjekk cache først
+    start_time = perf_counter()
     if set_id in set_cache:
-        # Move to end (most recently used)
+        # Beveger til slutten av ordboken (Blir mest nylig lagt til)
         result = set_cache.pop(set_id)
         set_cache[set_id] = result
+        print(f"Cache HIT for {set_id}: {perf_counter() - start_time:.6f}s")
         return Response(result, content_type="application/json")
     db = Database()
     try:
         result = get_set_and_inventory(db, set_id)
     finally:
         db.close()
+    print(f"Cache MISS for {set_id}: {perf_counter() - start_time:.6f}s")
 
     # Oppdater cache
     set_cache[set_id] = result
