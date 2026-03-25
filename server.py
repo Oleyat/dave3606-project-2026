@@ -1,6 +1,7 @@
 import json
 import html
 import psycopg
+import struct
 import gzip
 from flask import Flask, Response, render_template, request
 from time import perf_counter
@@ -51,6 +52,10 @@ def get_set_and_inventory(db, set_id): #returns a json string with information a
     json_result = json.dumps(result, indent=4)
     return json_result
 
+def varlenStruct(format, value):
+    return struct.pack(format, len(value)) + value.encode("utf-8")
+def fixLenStruct(format, *value):
+    return struct.pack(format, *value)
 
 @app.route("/")
 def index():
@@ -81,8 +86,6 @@ def sets():
         db.close()
 
     gzip_page_html, used_encoding = encode_page_html(page_html, getEncoding)
-
-
     return Response(gzip_page_html, headers={"Content-Encoding": "gzip"}, content_type=f"text/html; charset={used_encoding}")
 
 @app.route("/set")
@@ -90,17 +93,35 @@ def legoSet():  # We don't want to call the function `set`, since that would hid
     with open("templates/set.html", 'r') as f:
         template = f.read()
     return Response(template)
- 
+
+
+
+set_cache = {}
+MAX_CACHE_SIZE = 100
 
 @app.route("/api/set")
 def apiSet():
     db = Database()
     set_id = request.args.get("id")
-    try:
-        json_result = get_set_and_inventory(db, set_id)
-    finally:
-        db.close()
-    return Response(json_result, content_type="application/json")
+
+    set_cache[set_id] = result
+    if len(set_cache) > MAX_CACHE_SIZE:
+        oldest_key = next(iter(set_cache))
+        del set_cache[oldest_key]
+
+    if set_id in set_cache:
+        # Move to end (most recently used) by re-inserting
+        result = set_cache.pop(set_id)
+        set_cache[set_id] = result 
+        json_result = json.dumps(result, indent=4)
+        return Response(json_result, content_type="application/json")
+    else:
+        try:
+            json_result = get_set_and_inventory(db, set_id)
+        finally:
+            db.close()
+        return Response(json_result, content_type="application/json")
+
 
 
 
@@ -122,35 +143,25 @@ def apiBinarySet():
             rows = cur.fetchall()
             firstrow = rows[0]
             if firstrow is not None:
-                data.append(struct.pack("B", len(result["set_id"])))
-                data.append(result["set_id"].encode("utf-8")) #set_id
+                data.append(varlenStruct(">B", result["set_id"])) #set_id
+                data.append(varlenStruct(">B", firstrow[1])) #name
+                data.append(fixLenStruct(">H", int(firstrow[2])))
+                data.append(varlenStruct(">B", firstrow[3])) #category
+                data.append(varlenStruct(">H", firstrow[4])) #preview_image_url
 
-                data.append(struct.pack(">B", len(firstrow[1])))
-                data.append(firstrow[1].encode("utf-8")) #name
-
-                data.append(struct.pack(">H", int(firstrow[2])))
-
-                data.append(struct.pack(">B", len(firstrow[3])))
-                data.append(firstrow[3].encode("utf-8")) #category
-
-                data.append(struct.pack(">H", len(firstrow[4])))
-                data.append(firstrow[4].encode("utf-8")) #preview_image_url
                 for row in rows:
                     if(row[6] < 255 and row[7] < 256):
-                        data.append(struct.pack(">BB", row[6], row[7])) 
+                        data.append(fixLenStruct(">BB", row[6], row[7])) #color_id, count
                     else:
-                        data.append(struct.pack(">BBH", 255,row[6], row[7])) #color_id, count #max col 255 max count 3100
+                        data.append(fixLenStruct(">BBH", 255, row[6], row[7])) #color_id, count #max col 255 max count 3100
                     if(row[5].isdigit() and int(row[5]) < 65536): # #ingen brick_type_id er over 50 karakterer
                         diglen = 100 + len(row[5])
-                        data.append(struct.pack(">B", diglen))
-                        data.append(struct.pack(">H", int(row[5])))
+                        data.append(fixLenStruct(">BH", diglen, int(row[5]))) #brick_type_id
                     elif(row[5].isdigit() and int(row[5]) < 4294967296):
                         diglen = 200 + len(row[5])
-                        data.append(struct.pack(">B", diglen))
-                        data.append(struct.pack(">I", int(row[5])))
+                        data.append(fixLenStruct(">BI", diglen, int(row[5])))
                     else:
-                        data.append(struct.pack(">B", len(row[5]))) 
-                        data.append(str(row[5]).encode("utf-8"))
+                        data.append(varlenStruct(">B", row[5]))
     finally:
         conn.close()
     

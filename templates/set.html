@@ -27,15 +27,20 @@
             fetch(`/api/set?id=${setId}`)
                 .then(function(setData) { return setData.json(); })
                 .then(function(setJson) {
+                    document.getElementById("setId").textContent = setJson.id;
+                    document.getElementById("setName").textContent = setJson.name;
+
                     const inventoryTable = document.getElementById("inventory");
-                    const inventoryRow = document.createElement("tr");
-                    inventoryRow.innerHTML = (
-                        "<td>Example row</td>" +
-                        "<td>to show how to</td>" +
-                        "<td>dynamically construct HTML</td>" +
-                        "<td>in JavaScript</td>"
-                    )
-                    inventoryTable.appendChild(inventoryRow);
+                    for (const brick of setJson.inventory) {
+                        const row = document.createElement("tr");
+                        row.innerHTML = (
+                            `<td>${brick.preview_image_url ? `<img src="${brick.preview_image_url}" height="40">` : ""}</td>` +
+                            `<td>${brick.name}</td>` +
+                            `<td>${brick.color_id}</td>` +
+                            `<td>${brick.count}</td>`
+                        );
+                        inventoryTable.appendChild(row);
+                    }
                 })
                 .catch(function(err) {
                     document.getElementById("error").textContent = "Failed to load data: " + err;
