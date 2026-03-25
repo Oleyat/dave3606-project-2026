@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="en">
     <head>
-        <meta charset="UTF-8">
+        <meta charset="{CHARSET}">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
         <title>All Lego sets</title>
         <style>
@@ -14,8 +14,17 @@
     <body>
         <h1>All Lego sets</h1>
         <table>
-            <thead><tr><th>Id</th><th>Name</th></tr></thead>
-            <tbody>{ROWS}</tbody>
+            <thead>
+                <tr><th>Id</th><th>Name</th></tr>
+            </thead>
+            <tbody>
+                {% for row in rows %}
+                <tr>
+                    <td><a href="/set?id={{ row.id }}">{{ row.id }}</a></td>
+                    <td>{{ row.name }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
         </table>
     </body>
 </html>
