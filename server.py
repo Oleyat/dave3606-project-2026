@@ -34,9 +34,10 @@ def get_set_and_inventory(db, set_id): #returns a json string with information a
             "inventory": []}
     
     query = """
-        SELECT s.id, s.name, COALESCE(s.year::text, ''), s.category, s.preview_image_url, inv.brick_type_id, inv.color_id, inv.count 
+        SELECT s.id, s.name, COALESCE(s.year::text, ''), s.category, s.preview_image_url, inv.brick_type_id, inv.color_id, inv.count, b.name, b.preview_image_url
         FROM lego_set s 
         LEFT JOIN lego_inventory inv ON s.id=inv.set_id 
+        LEFT JOIN lego_brick b ON inv.brick_type_id = b.brick_type_id AND inv.color_id = b.color_id
         WHERE s.id = %s
     """
     rows = db.execute_and_fetch_all(query, (set_id,))
@@ -50,7 +51,9 @@ def get_set_and_inventory(db, set_id): #returns a json string with information a
             result["inventory"].append({
             "brick_type_id": html.escape(str(row[5])),
             "color_id": html.escape(str(row[6])),
-            "count": html.escape(str(row[7]))
+            "count": html.escape(str(row[7])),
+            "name": html.escape(str(row[8])),
+            "preview_image_url": html.escape(str(row[9]))
         })
     json_result = json.dumps(result, indent=4)
     return json_result
@@ -72,7 +75,6 @@ def index():
     with open("templates/index.html", 'r') as f:
         template = f.read()
     return Response(template)
-
 
 @app.route("/sets")
 def sets():
@@ -120,7 +122,6 @@ def apiSet():
     if len(set_cache) > MAX_CACHE_SIZE:
         oldest_key = next(iter(set_cache))
         del set_cache[oldest_key]
-
     return Response(result, content_type="application/json")
 
 
