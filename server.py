@@ -26,8 +26,6 @@ def index():
 
 @app.route("/sets")
 def sets():
-    with open("templates/sets.html", 'r') as f:
-        template = f.read()
     rows = []
 
     utfEncondings = ["UTF-8", "UTF-16"]
