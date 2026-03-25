@@ -16,6 +16,10 @@ DB_CONFIG = {
     "password": "bricks",
 }
 
+def varlenStruct(format, value):
+    return struct.pack(format, len(value)) + value.encode("utf-8")
+def fixLenStruct(format, *value):
+    return struct.pack(format, *value)
 
 @app.route("/")
 def index():
@@ -26,8 +30,6 @@ def index():
 
 @app.route("/sets")
 def sets():
-    with open("templates/sets.html", 'r') as f:
-        template = f.read()
     rows = []
 
     utfEncondings = ["UTF-8", "UTF-16"]
@@ -114,35 +116,25 @@ def apiBinarySet():
             rows = cur.fetchall()
             firstrow = rows[0]
             if firstrow is not None:
-                data.append(struct.pack("B", len(result["set_id"])))
-                data.append(result["set_id"].encode("utf-8")) #set_id
+                data.append(varlenStruct(">B", result["set_id"])) #set_id
+                data.append(varlenStruct(">B", firstrow[1])) #name
+                data.append(fixLenStruct(">H", int(firstrow[2])))
+                data.append(varlenStruct(">B", firstrow[3])) #category
+                data.append(varlenStruct(">H", firstrow[4])) #preview_image_url
 
-                data.append(struct.pack(">B", len(firstrow[1])))
-                data.append(firstrow[1].encode("utf-8")) #name
-
-                data.append(struct.pack(">H", int(firstrow[2])))
-
-                data.append(struct.pack(">B", len(firstrow[3])))
-                data.append(firstrow[3].encode("utf-8")) #category
-
-                data.append(struct.pack(">H", len(firstrow[4])))
-                data.append(firstrow[4].encode("utf-8")) #preview_image_url
                 for row in rows:
                     if(row[6] < 255 and row[7] < 256):
-                        data.append(struct.pack(">BB", row[6], row[7])) 
+                        data.append(fixLenStruct(">BB", row[6], row[7])) #color_id, count
                     else:
-                        data.append(struct.pack(">BBH", 255,row[6], row[7])) #color_id, count #max col 255 max count 3100
+                        data.append(fixLenStruct(">BBH", 255, row[6], row[7])) #color_id, count #max col 255 max count 3100
                     if(row[5].isdigit() and int(row[5]) < 65536): # #ingen brick_type_id er over 50 karakterer
                         diglen = 100 + len(row[5])
-                        data.append(struct.pack(">B", diglen))
-                        data.append(struct.pack(">H", int(row[5])))
+                        data.append(fixLenStruct(">BH", diglen, int(row[5]))) #brick_type_id
                     elif(row[5].isdigit() and int(row[5]) < 4294967296):
                         diglen = 200 + len(row[5])
-                        data.append(struct.pack(">B", diglen))
-                        data.append(struct.pack(">I", int(row[5])))
+                        data.append(fixLenStruct(">BI", diglen, int(row[5])))
                     else:
-                        data.append(struct.pack(">B", len(row[5]))) 
-                        data.append(str(row[5]).encode("utf-8"))
+                        data.append(varlenStruct(">B", row[5]))
     finally:
         conn.close()
     
