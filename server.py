@@ -2,19 +2,55 @@ import json
 import html
 import psycopg
 import struct
+import gzip
 from flask import Flask, Response, render_template, request
 from time import perf_counter
-import gzip
+from database import Database
 
 app = Flask(__name__)
 
-DB_CONFIG = {
-    "host": "localhost",
-    "port": 9876,
-    "dbname": "lego-db",
-    "user": "lego",
-    "password": "bricks",
-}
+def get_all_sets(db): #returns fully rendered html string with all sets
+    rows = []
+    query = "SELECT id, name FROM lego_set order by id"
+    results = db.execute_and_fetch_all(query)
+
+    for row in results:
+        rows.append({  #no need to html.escape here, since Jinja will do it for us when we render the template.
+            "id": row[0],
+            "name": row[1]
+        })
+    page_html = render_template("sets.html", rows=rows)
+    return page_html
+
+def get_set_and_inventory(db, set_id): #returns a json string with information about set and inventiry.
+    result = {"set_id": set_id,
+            "name": "",
+            "year": "",
+            "category": "",
+            "preview_image_url": "",
+            "inventory": []}
+    
+    query = """
+        SELECT s.id, s.name, COALESCE(s.year::text, ''), s.category, s.preview_image_url, inv.brick_type_id, inv.color_id, inv.count 
+        FROM lego_set s 
+        LEFT JOIN lego_inventory inv ON s.id=inv.set_id 
+        WHERE s.id = %s
+    """
+    rows = db.execute_and_fetch_all(query, (set_id,))
+    firstrow = rows[0]
+    if firstrow is not None:
+        result["name"] = html.escape(firstrow[1])
+        result["year"] = html.escape(firstrow[2]) # kan bli null pga html.escape.
+        result["category"] = html.escape(firstrow[3])
+        result["preview_image_url"] = html.escape(firstrow[4])
+        for row in rows:
+            result["inventory"].append({
+            "brick_type_id": html.escape(str(row[5])),
+            "color_id": html.escape(str(row[6])),
+            "count": html.escape(str(row[7]))
+        })
+    json_result = json.dumps(result, indent=4)
+    return json_result
 
 
 @app.route("/")
@@ -23,36 +59,30 @@ def index():
         template = f.read()
     return Response(template)
 
+def encode_page_html(page_html, encoding): #returns gzipped html encoded in the specified encoding.
+    utfEncondings = ["UTF-8", "UTF-16", "UTF-16"]
+    if (encoding is None or encoding.upper() not in utfEncondings):
+        encoding = "UTF-8"
+
+    page_html = page_html.replace("{CHARSET}", encoding)
+    page_html = page_html.encode(encoding=encoding)
+    gzip_page_html = gzip.compress(page_html)    
+
+    return gzip_page_html,encoding.upper()
 
 @app.route("/sets")
 def sets():
-    rows = []
-
-    utfEncondings = ["UTF-8", "UTF-16"]
+    db = Database()
     getEncoding = request.args.get('encoding')
-    if (getEncoding is None or getEncoding.upper() not in utfEncondings):
-        getEncoding = "UTF-8"
-
     start_time = perf_counter()
-    conn = psycopg.connect(**DB_CONFIG)
     try:
-        with conn.cursor() as cur:
-            cur.execute("SELECT id, name FROM lego_set ORDER BY id")
-            for row in cur.fetchall():
-                rows.append({  #no need to html.escape here, since Jinja will do it for us when we render the template.
-                    "id": row[0],
-                    "name": row[1]
-                    })
+        page_html = get_all_sets(db)
         print(f"Time to render all sets: {perf_counter() - start_time}")
     finally:
-        conn.close()
+        db.close()
 
-    page_html = render_template("sets.html", rows=rows)
-    page_html = page_html.replace("{CHARSET}", getEncoding)
-    page_html = page_html.encode(encoding=getEncoding)
-    gzip_page_html = gzip.compress(page_html)
-
-    return Response(gzip_page_html, headers={"Content-Encoding": "gzip"}, content_type=f"text/html; charset={getEncoding.upper()}")
+    gzip_page_html, used_encoding = encode_page_html(page_html, getEncoding)
+    return Response(gzip_page_html, headers={"Content-Encoding": "gzip"}, content_type=f"text/html; charset={used_encoding}")
 
 @app.route("/set")
 def legoSet():  # We don't want to call the function `set`, since that would hide the `set` data type.
@@ -67,7 +97,13 @@ MAX_CACHE_SIZE = 100
 
 @app.route("/api/set")
 def apiSet():
+    db = Database()
     set_id = request.args.get("id")
+
+    set_cache[set_id] = result
+    if len(set_cache) > MAX_CACHE_SIZE:
+        oldest_key = next(iter(set_cache))
+        del set_cache[oldest_key]
 
     if set_id in set_cache:
         # Move to end (most recently used) by re-inserting
@@ -75,14 +111,12 @@ def apiSet():
         set_cache[set_id] = result 
         json_result = json.dumps(result, indent=4)
         return Response(json_result, content_type="application/json")
-    
-
-    
-
-    set_cache[set_id] = result
-    if len(set_cache) > MAX_CACHE_SIZE:
-        oldest_key = next(iter(set_cache))
-        del set_cache[oldest_key]
+    else:
+        try:
+            json_result = get_set_and_inventory(db, set_id)
+        finally:
+            db.close()
+        return Response(json_result, content_type="application/json")
 
     return Response(json.dumps(result, indent=4), content_type="application/json")
 
