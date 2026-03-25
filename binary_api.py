@@ -83,13 +83,13 @@ while offset + 2 < len(res.content):
     else:
         brick_type_id = readData(">B")
 
-    brick_image_url = readData(">H")
+    #brick_image_url = readData(">H") # venter på svar om vi må ha disse med eller ikke, fjern kommentarer for å få bildet sendt.
 
     result["inventory"].append({
         "brick_type_id": brick_type_id,
         "color_id": color_id,
         "count": count,
-       # "preview_image_url": brick_image_url
+        # "preview_image_url": brick_image_url # venter på svar om vi må ha disse med eller ikke, fjern kommentarer for å få bildet sendt.
     })
 
 with open(f"{filename}.json", "w") as f:
