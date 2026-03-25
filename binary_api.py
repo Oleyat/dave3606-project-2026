@@ -3,8 +3,11 @@ import json
 import requests
 import struct
 
-setid = "10312-1"
+setid = "71799-1"
 filename = "result"
+
+length = 0
+offset = 0
 
 result = {"set_id": setid,
         "name": "",
@@ -13,42 +16,40 @@ result = {"set_id": setid,
         "preview_image_url": "",
         "inventory": []}
 
+formats = {
+    "B": 1,
+    ">B": 1,
+    ">H": 2,
+    ">I": 4
+}
+
 def retLen(offset, format):
     return struct.unpack_from(format, res.content, offset)[0]
 
 def retData(offset, length):
     return res.content[offset:offset+length].decode("utf-8")
 
-length = 0
-offset = 0
+def readData(format):
+    global offset
+    length = retLen(offset, format)
+    offset += formats[format]
+    binData = retData(offset, length)
+    offset += length
+    return binData
+
 res = requests.get(f"http://localhost:5000/api/binary/set?id={setid}")
-length = retLen(offset, "B")
-offset += 1
-result["set_id"] = retData(offset, length)
 
-offset += length
+result["set_id"] = readData("B")
 
-length = retLen(offset, ">B")
-offset += 1
-result["name"] = retData(offset, length)
-
-offset += length
+result["name"] = readData(">B")
 
 result["year"] = struct.unpack_from(">H", res.content, offset)[0]
 
 offset += 2
 
-length = retLen(offset, ">B")
-offset += 1
-result["category"] = retData(offset, length)
+result["category"] = readData(">B")
 
-offset += length
-
-length = retLen(offset, ">H")
-offset += 2
-result["preview_image_url"] = retData(offset, length)
-
-offset += length
+result["preview_image_url"] = readData(">H")
 
 while offset + 2 < len(res.content):
     brick_type_id = 0
