@@ -61,9 +61,32 @@ def legoSet():  # We don't want to call the function `set`, since that would hid
     return Response(template)
 
 
+
+set_cache = {}
+MAX_CACHE_SIZE = 100
+
 @app.route("/api/set")
 def apiSet():
     set_id = request.args.get("id")
+<<<<<<< Oppgave6Frontend&Caching
+
+    if set_id in set_cache:
+        # Move to end (most recently used) by re-inserting
+        result = set_cache.pop(set_id)
+        set_cache[set_id] = result 
+        json_result = json.dumps(result, indent=4)
+        return Response(json_result, content_type="application/json")
+    
+
+    
+
+    set_cache[set_id] = result
+    if len(set_cache) > MAX_CACHE_SIZE:
+        oldest_key = next(iter(set_cache))
+        del set_cache[oldest_key]
+
+    return Response(json.dumps(result, indent=4), content_type="application/json")
+=======
     result = {"set_id": set_id,
             "name": "",
             "year": "",
@@ -91,6 +114,7 @@ def apiSet():
         conn.close()
     json_result = json.dumps(result, indent=4)
     return Response(json_result, content_type="application/json")
+>>>>>>> main
 
 
 
