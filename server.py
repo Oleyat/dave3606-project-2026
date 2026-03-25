@@ -8,7 +8,7 @@ from database import Database
 
 app = Flask(__name__)
 
-def get_all_sets(db): #returns a list of dicts, where each dict has keys "id" and "name".
+def get_all_sets(db): #returns fully rendered html string with all sets
     rows = []
     query = "SELECT id, name FROM lego_set order by id"
     results = db.execute_and_fetch_all(query)
@@ -18,9 +18,10 @@ def get_all_sets(db): #returns a list of dicts, where each dict has keys "id" an
             "id": row[0],
             "name": row[1]
         })
-    return rows
+    page_html = render_template("sets.html", rows=rows)
+    return page_html
 
-def get_set_and_inventory(db, set_id):
+def get_set_and_inventory(db, set_id): #returns a json string with information about set and inventiry.
     result = {"set_id": set_id,
             "name": "",
             "year": "",
@@ -57,33 +58,32 @@ def index():
         template = f.read()
     return Response(template)
 
+def encode_page_html(page_html, encoding): #returns gzipped html encoded in the specified encoding.
+    utfEncondings = ["UTF-8", "UTF-16", "UTF-16"]
+    if (encoding is None or encoding.upper() not in utfEncondings):
+        encoding = "UTF-8"
+
+    page_html = page_html.replace("{CHARSET}", encoding)
+    page_html = page_html.encode(encoding=encoding)
+    gzip_page_html = gzip.compress(page_html)    
+
+    return gzip_page_html,encoding.upper()
 
 @app.route("/sets")
 def sets():
-    with open("templates/sets.html", 'r') as f:
-        template = f.read()
-    
     db = Database()
-
-    utfEncondings = ["UTF-8", "UTF-16", "UTF-16"]
     getEncoding = request.args.get('encoding')
-    if (getEncoding is None or getEncoding.upper() not in utfEncondings):
-        getEncoding = "UTF-8"
-
     start_time = perf_counter()
     try:
-        rows = get_all_sets(db)
+        page_html = get_all_sets(db)
         print(f"Time to render all sets: {perf_counter() - start_time}")
     finally:
         db.close()
 
+    gzip_page_html, used_encoding = encode_page_html(page_html, getEncoding)
 
-    page_html = render_template("sets.html", rows=rows)
-    page_html = page_html.replace("{CHARSET}", getEncoding)
-    page_html = page_html.encode(encoding=getEncoding)
-    gzip_page_html = gzip.compress(page_html)
 
-    return Response(gzip_page_html, headers={"Content-Encoding": "gzip"}, content_type=f"text/html; charset={getEncoding.upper()}")
+    return Response(gzip_page_html, headers={"Content-Encoding": "gzip"}, content_type=f"text/html; charset={used_encoding}")
 
 @app.route("/set")
 def legoSet():  # We don't want to call the function `set`, since that would hide the `set` data type.
@@ -97,10 +97,9 @@ def apiSet():
     db = Database()
     set_id = request.args.get("id")
     try:
-        result = get_set_and_inventory(db, set_id)
+        json_result = get_set_and_inventory(db, set_id)
     finally:
         db.close()
-    json_result = json.dumps(result, indent=4)
     return Response(json_result, content_type="application/json")
 
 
