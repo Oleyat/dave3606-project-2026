@@ -24,6 +24,12 @@ formats = {
     ">BB": 2
 }
 
+links = {
+    1: "jpg",
+    2: "png",
+    3: "gif"
+}
+
 def retLen(offset, format):
     return struct.unpack_from(format, res.content, offset)[0]
 
@@ -42,7 +48,7 @@ def readDataRaw(format):
     # integer data
     global offset
     length = formats[format]
-    binData = res.content[offset:offset+length]
+    binData = struct.unpack_from(format, res.content, offset)[0]
     offset += length
     return binData
 
@@ -52,7 +58,7 @@ result["set_id"] = readData("B")
 
 result["name"] = readData(">B")
 
-result["year"] = readDataRaw(">H")[0]
+result["year"] = readDataRaw(">H")
 
 result["category"] = readData(">B")
 
@@ -66,31 +72,45 @@ while offset + 2 < len(res.content):
     mix = res.content[offset]
     if (mix==255): # sjekk om kontroll byte
         offset += 1
-        color_id = readDataRaw(">B")[0]
-        count = readDataRaw(">H")[0]
+        color_id = readDataRaw(">B")
+        count = readDataRaw(">H")
         
     else:
-        color_id, count = readDataRaw(">BB")
+        color_id = readDataRaw(">B")
+        count = readDataRaw(">B")
     digcheck = res.content[offset]
     if(digcheck >= 100 and digcheck < 200): # tall under 2^16
         offset += 1
         digint = digcheck - 100
-        brick_type_id = str(readDataRaw(">H")[0])
+        brick_type_id = str(readDataRaw(">H"))
     elif(digcheck >= 200): # 200 er for tall over 2^16
         offset += 1
         digint = digcheck - 200
-        brick_type_id = str(readDataRaw(">I")[0])
+        brick_type_id = str(readDataRaw(">I"))
     else:
         brick_type_id = readData(">B")
 
-    brick_image_url = readData(">H") # venter på svar om vi må ha disse med eller ikke, fjern kommentarer for å få bildet sendt.
+    digcheck = res.content[offset]
+    digint = 0
+    if(digcheck >= 100 and digcheck < 200): # tall under 2^16
+        offset += 1
+        digint = digcheck - 100
+        brick_image_url = str(readDataRaw(">H"))
+    elif(digcheck >= 200): # 200 er for tall over 2^16
+        offset += 1
+        digint = digcheck - 200
+        brick_image_url = str(readDataRaw(">I"))
+    else:
+        brick_image_url = readData(">B")
+        digint = readDataRaw(">B")
 
     result["inventory"].append({
         "brick_type_id": brick_type_id,
         "color_id": color_id,
         "count": count,
-        "preview_image_url": f"https://img.bricklink.com/{brick_image_url}.jpg" # venter på svar om vi må ha disse med eller ikke, fjern kommentarer for å få bildet sendt.
+        "preview_image_url": f"https://img.bricklink.com/P/{color_id}/{brick_image_url}.{links[digint]}"
     })                          # sparer 25 bytes per image ved å kun sende unike delen.
+                                # har observert at color_id sendes, og at P sannsynligvis står for PART., trenger da kun image url, og hvilken link type det er.
 
 with open(f"{filename}.json", "w") as f:
     json.dump(result, f, indent=4)
