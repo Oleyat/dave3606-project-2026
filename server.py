@@ -95,7 +95,7 @@ def sets():
         db.close()
 
     gzip_page_html, used_encoding = encode_page_html(page_html, getEncoding)
-    return Response(gzip_page_html, headers={"Content-Encoding": "gzip"}, content_type=f"text/html; charset={used_encoding}")
+    return Response(gzip_page_html, headers={"Content-Encoding": "gzip", "Cache-Control" : "max-age=60"}, content_type=f"text/html; charset={used_encoding}")
 
 @app.route("/set")
 def legoSet():  # We don't want to call the function `set`, since that would hide the `set` data type.
@@ -116,8 +116,7 @@ def apiSet():
         # Move to end (most recently used)
         result = set_cache.pop(set_id)
         set_cache[set_id] = result
-        return Response(json.dumps(result, indent=4), content_type="application/json")
-
+        return Response(result, content_type="application/json")
     db = Database()
     try:
         result = get_set_and_inventory(db, set_id)

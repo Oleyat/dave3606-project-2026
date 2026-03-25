@@ -91,7 +91,16 @@ Dermed ender vi opp med følgende filformat:
 For eksempel for lego-set: `71799-1` i browser får du da respons på ca `187880` bytes mens med vår binær respons får du kun `10053` bytes altså ca 18.5 ganger mindre.
 
 
-## 6.
+## 6. 
+
+Explain briefly in the report how the cache works, which eviction policy you chose, and what its complexity is. Measure how much time the endpoint spends when the set inventory is cached vs. when it is not.
+
+
+Vi har valgt å bruke LRU cache for å håndtere lagring av data i minnet. Det er en type cache som fjerner den minst brukte elementet når cachen er full. I dette tilfellet bruker vi det for å lagre de mest nylig brukte legosettene, slik at når en bruker gjør en spørring for et sett som allerede er i cachen, kan vi raskt returnere det uten å måtte hente det fra databasen igjen. 
+
+Slik cachen vi lagde fungerer er at den har en størrelse på 100 elementer, og at den .pop
+
+
 
   
   
