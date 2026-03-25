@@ -1,7 +1,7 @@
 import json
 import html
 import psycopg
-from flask import Flask, Response, request
+from flask import Flask, Response, render_template, request
 from time import perf_counter
 import gzip
 
@@ -27,7 +27,7 @@ def index():
 def sets():
     with open("templates/sets.html", 'r') as f:
         template = f.read()
-    rows = ""
+    rows = []
 
     utfEncondings = ["UTF-8", "UTF-16", "UTF-16"]
     getEncoding = request.args.get('encoding')
@@ -38,23 +38,22 @@ def sets():
     conn = psycopg.connect(**DB_CONFIG)
     try:
         with conn.cursor() as cur:
-            cur.execute("select id, name from lego_set order by id")
+            cur.execute("SELECT id, name FROM lego_set ORDER BY id")
             for row in cur.fetchall():
-                html_safe_id = html.escape(row[0])
-                html_safe_name = html.escape(row[1])
-                existing_rows = rows
-                rows = existing_rows + f'<tr><td><a href="/set?id={html_safe_id}">{html_safe_id}</a></td><td>{html_safe_name}</td></tr>\n'
+                rows.append({  #no need to html.escape here, since Jinja will do it for us when we render the template.
+                    "id": row[0],
+                    "name": row[1]
+                    })
         print(f"Time to render all sets: {perf_counter() - start_time}")
     finally:
         conn.close()
 
-    page_html = template.replace("{ROWS}", rows)
+    page_html = render_template("sets.html", rows=rows)
     page_html = page_html.replace("{CHARSET}", getEncoding)
     page_html = page_html.encode(encoding=getEncoding)
     gzip_page_html = gzip.compress(page_html)
 
     return Response(gzip_page_html, headers={"Content-Encoding": "gzip"}, content_type=f"text/html; charset={getEncoding.upper()}")
-
 
 @app.route("/set")
 def legoSet():  # We don't want to call the function `set`, since that would hide the `set` data type.
