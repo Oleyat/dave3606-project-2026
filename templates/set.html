@@ -27,7 +27,7 @@
             fetch(`/api/set?id=${setId}`)
                 .then(function(setData) { return setData.json(); })
                 .then(function(setJson) {
-                    document.getElementById("setId").textContent = setJson.id;
+                    document.getElementById("setId").textContent = setJson.set_id;
                     document.getElementById("setName").textContent = setJson.name;
 
                     const inventoryTable = document.getElementById("inventory");
