@@ -11,13 +11,16 @@ app = Flask(__name__)
 
 def get_all_sets(db): #returns fully rendered html string with all sets
     rows = []
-    query = "SELECT id, name FROM lego_set order by id"
+    query = "SELECT id, name, year, category, preview_image_url FROM lego_set order by id"
     results = db.execute_and_fetch_all(query)
 
     for row in results:
         rows.append({  #no need to html.escape here, since Jinja will do it for us when we render the template.
             "id": row[0],
-            "name": row[1]
+            "name": row[1],
+            "year": row[2],
+            "category": row[3],
+            "preview_image_url": row[4]
         })
     page_html = render_template("sets.html", rows=rows)
     return page_html
@@ -52,13 +55,6 @@ def get_set_and_inventory(db, set_id): #returns a json string with information a
     json_result = json.dumps(result, indent=4)
     return json_result
 
-
-@app.route("/")
-def index():
-    with open("templates/index.html", 'r') as f:
-        template = f.read()
-    return Response(template)
-
 def encode_page_html(page_html, encoding): #returns gzipped html encoded in the specified encoding.
     utfEncondings = ["UTF-8", "UTF-16", "UTF-16"]
     if (encoding is None or encoding.upper() not in utfEncondings):
@@ -69,6 +65,14 @@ def encode_page_html(page_html, encoding): #returns gzipped html encoded in the 
     gzip_page_html = gzip.compress(page_html)    
 
     return gzip_page_html,encoding.upper()
+
+
+@app.route("/")
+def index():
+    with open("templates/index.html", 'r') as f:
+        template = f.read()
+    return Response(template)
+
 
 @app.route("/sets")
 def sets():
