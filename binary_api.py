@@ -30,6 +30,9 @@ links = {
     3: "gif"
 }
 
+colormap = {}
+doublecol = ["Dark", "Light", "Bright", "Medium"]
+
 def retLen(offset, format):
     return struct.unpack_from(format, res.content, offset)[0]
 
@@ -52,9 +55,23 @@ def readDataRaw(format):
     offset += length
     return binData
 
+def loadColors():
+    global offset
+    colormaps = {}
+    length = retLen(offset, ">H")
+    offset += 2
+    for i in range(length):
+        color_id = readDataRaw(">B")
+        color_name = readData(">B")
+        colormaps[color_id] = color_name
+    return colormaps
+
 res = requests.get(f"http://localhost:5000/api/binary/set?id={setid}")
 
-result["set_id"] = readData("B")
+colormap = loadColors()
+colormap[0] = ""
+
+result["set_id"] = readData(">B")
 
 result["name"] = readData(">B")
 
@@ -108,7 +125,7 @@ while offset + 2 < len(res.content):
         "brick_type_id": brick_type_id,
         "color_id": color_id,
         "count": count,
-        "brick_name": brick_name,
+        "brick_name": f"{colormap[color_id]} {brick_name}",
         "preview_image_url": f"https://img.bricklink.com/P/{color_id}/{brick_image_url}.{links[digint]}"
     })                          # sparer 25 bytes per image ved å kun sende unike delen.
                                 # har observert at color_id sendes, og at P sannsynligvis står for PART., trenger da kun image url, og hvilken link type det er.
