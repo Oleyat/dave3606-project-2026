@@ -136,7 +136,7 @@ def get_set_and_inventory(db, set_id): #returns a json string with information a
     return json_result
 
 def encode_page_html(page_html, encoding): #returns gzipped html encoded in the specified encoding.
-    utfEncondings = ["UTF-8", "UTF-16", "UTF-16"]
+    utfEncondings = ["UTF-8", "UTF-16"]
     if (encoding is None or encoding.upper() not in utfEncondings):
         encoding = "UTF-8"
 

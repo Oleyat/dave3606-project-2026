@@ -1,5 +1,6 @@
 import json
-from server import app, get_next_sets_forward, get_next_sets_backward, get_set_and_inventory
+import gzip
+from server import app, get_next_sets_forward, get_next_sets_backward, get_set_and_inventory, encode_page_html
 
 class MockDB:
     def __init__(self, expected_query, expected_params, fake_rows): #what moch should expect and return
@@ -312,3 +313,34 @@ def test_get_next_sets_backward_no_previous_page():
     assert [row["id"] for row in result["rows"]] == [1, 2]
     assert result["next_cursor"] == 2
     assert result["prev_cursor"] is None
+
+
+def test_encode_page_html_defaults_to_utf8(): #checks that default encoding is UTF-8 
+    html = "<meta charset='{CHARSET}'><h1>Hei</h1>"
+
+    compressed, used_encoding = encode_page_html(html, None)
+    decoded = gzip.decompress(compressed).decode("UTF-8")
+
+    assert used_encoding == "UTF-8"
+    assert "UTF-8" in decoded
+    assert "{CHARSET}" not in decoded
+    assert "<h1>Hei</h1>" in decoded
+
+def test_encode_page_html_invalid_encoding_defaults_to_utf8(): #checks handeling of invalid encoding
+    html = "<meta charset='{CHARSET}'>"
+
+    compressed, used_encoding = encode_page_html(html, "latin1")
+    decoded = gzip.decompress(compressed).decode("UTF-8")
+
+    assert used_encoding == "UTF-8"
+    assert "UTF-8" in decoded
+
+def test_encode_page_html_utf16(): #checks that valid encoding works
+    html = "<meta charset='{CHARSET}'><h1>Hei</h1>"
+
+    compressed, used_encoding = encode_page_html(html, "UTF-16")
+    decoded = gzip.decompress(compressed).decode("UTF-16")
+
+    assert used_encoding == "UTF-16"
+    assert "UTF-16" in decoded
+    assert "<h1>Hei</h1>" in decoded
