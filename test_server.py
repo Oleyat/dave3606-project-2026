@@ -186,6 +186,89 @@ def test_get_next_sets_forward():
             }
         ],
         "next_cursor": 12,
-        "prev_cursor": 10,
+        "prev_cursor": 11,
         "limit": 2
     }
+
+def test_get_next_sets_forward_order(): #check explicitly that order is correct
+    expected_query = """
+        SELECT id, name, year, category, preview_image_url
+        FROM lego_set
+        WHERE id > %s
+        ORDER BY id
+        LIMIT %s
+    """
+
+    fake_rows = [
+        (11, "Set A", 2001, "City", "a.jpg"),
+        (12, "Set B", 2002, "Space", "b.jpg"),
+        (13, "Set C", 2003, "Castle", "c.jpg"),
+    ]
+
+    db = MockDB(expected_query, (10, 3), fake_rows)
+    result = get_next_sets_forward(db, cursor=10, limit=2)
+
+    ids = [row["id"] for row in result["rows"]]
+    assert ids == [11, 12]
+
+
+def test_get_next_sets_backward():
+    expected_query = """
+        SELECT id, name, year, category, preview_image_url
+        FROM lego_set
+        WHERE id < %s
+        ORDER BY id DESC
+        LIMIT %s
+    """
+
+    fake_rows = [
+        (12, "Set B", 2002, "Space", "b.jpg"),
+        (11, "Set A", 2001, "City", "a.jpg"),
+        (10, "Set C", 2003, "Castle", "c.jpg"),
+    ]
+
+    db = MockDB(expected_query, (13, 3), fake_rows) #limit is 2 but we fetch 3 to check if has next in function
+    result = get_next_sets_backward(db, cursor=13, limit=2)
+
+    assert result == {
+        "rows": [
+            {
+                "id": 11,
+                "name": "Set A",
+                "year": 2001,
+                "category": "City",
+                "preview_image_url": "a.jpg"
+            },
+            {
+                "id": 12,
+                "name": "Set B",
+                "year": 2002,
+                "category": "Space",
+                "preview_image_url": "b.jpg"
+            }
+        ],
+        "next_cursor": 12,
+        "prev_cursor": 11,
+        "limit": 2
+    }
+
+def test_get_next_sets_backward_order(): #check explicitly that order is correct for backward as well
+    expected_query = """
+        SELECT id, name, year, category, preview_image_url
+        FROM lego_set
+        WHERE id < %s
+        ORDER BY id DESC
+        LIMIT %s
+    """
+
+    fake_rows = [ #backwars order since that is result from query
+        (19, "Set A", 2001, "City", "a.jpg"),
+        (18, "Set B", 2002, "Space", "b.jpg"),
+        (17, "Set C", 2003, "Castle", "c.jpg"),
+    ]
+
+    db = MockDB(expected_query, (20, 3), fake_rows)
+    result = get_next_sets_backward(db, cursor=20, limit=2)
+
+    ids = [row["id"] for row in result["rows"]]
+    assert ids == [18, 19] #should be order asceningly

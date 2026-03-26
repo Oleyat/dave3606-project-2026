@@ -44,7 +44,7 @@ def get_next_sets_forward(db, cursor = None, limit=50): #returns fully rendered 
             "preview_image_url": row[4]
         })
     next_cursor = rows[-1]["id"] if rows and has_next else None
-    prev_cursor = cursor if cursor else None  #ensure prev_cursor is None if we are on the first page.
+    prev_cursor = rows[0]["id"] if rows and cursor is not None else None #fjerner previoud på første side
 
     return {
         "rows": rows,
@@ -88,7 +88,7 @@ def get_next_sets_backward(db, cursor = None, limit=50): #returns fully rendered
             "category": row[3],
             "preview_image_url": row[4]
         })
-    next_cursor = cursor if cursor else None  #ensure next_cursor is None if we are on the last page.
+    next_cursor = rows[-1]["id"] if rows else None  
     prev_cursor = rows[0]["id"] if rows and has_prev else None
 
     return{
