@@ -91,16 +91,29 @@ Dermed ender vi opp med følgende filformat:
   
 For eksempel for lego-set: `71799-1` i browser får du da respons på ca `187880` bytes mens med vår binær respons får du kun `10053` bytes altså ca 18.5 ganger mindre.
 > oppdater med verdiene: 431kb og 78kb om vi har med bilde til brikkene
+> Etter optimalisering av image url så har vi fått ned til 16867
 
 
-## 6. 
+## 6. Frontend and Caching
 
-Explain briefly in the report how the cache works, which eviction policy you chose, and what its complexity is. Measure how much time the endpoint spends when the set inventory is cached vs. when it is not.
+Vi har valgt å bruke LRU cache for å håndtere lagring av data i minnet. Det er en type cache som fjerner den minst brukte elementet når cachen er full. I dette tilfellet bruker vi det for å lagre de mest nylig brukte legosettene, slik at når en bruker gjør en spørring for et sett som allerede er i cachen, kan vi raskt returnere det uten å måtte hente det fra databasen igjen. LRU har en kompleksitet på O(1) for både innsetting og henting av elementer.
+
+Slik cachen vi lagde fungerer er at den har en størrelse på 100 elementer, og at den sjekker først om set_id er i cachen hvis den er der så bruker den: 
+
+```result = set_cache.pop(set_id)
+        set_cache[set_id] = result
+```
+
+for å hente ut dataen og samtidig flytte det til toppen av cachen for å indikere at det nylig har blitt brukt. Hvis set_id ikke er i cachen, henter den dataen fra databasen, legger det til i cachen, og hvis cachen er full, fjerner den det minst nylig brukte elementet før den legger til det nye elementet.
+
+Tidene for å hente data fra cachen vs. fra databasen. Velger en vilkårlig set_id = 10497-1 for å teste dette: 
+
+Uten cache = 0.065257s
+
+Med cache = 0.000062s
 
 
-Vi har valgt å bruke LRU cache for å håndtere lagring av data i minnet. Det er en type cache som fjerner den minst brukte elementet når cachen er full. I dette tilfellet bruker vi det for å lagre de mest nylig brukte legosettene, slik at når en bruker gjør en spørring for et sett som allerede er i cachen, kan vi raskt returnere det uten å måtte hente det fra databasen igjen. 
 
-Slik cachen vi lagde fungerer er at den har en størrelse på 100 elementer, og at den .pop
 
 
 

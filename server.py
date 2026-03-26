@@ -74,6 +74,11 @@ def encode_page_html(page_html, encoding): #returns gzipped html encoded in the 
 
     return gzip_page_html,encoding.upper()
 
+def varlenStruct(format, value):
+    return struct.pack(format, len(value)) + value.encode("utf-8")
+
+def fixLenStruct(format, *value):
+    return struct.pack(format, *value)
 
 @app.route("/")
 def index():
@@ -140,39 +145,43 @@ def apiBinarySet():
     finally:
         db.close()
     data = []
-    data.append(struct.pack("B", len(set_id)))
-    data.append(set_id.encode("utf-8")) #set_id
+    data.append(varlenStruct(">B", result["set_id"])) #set_id
+    data.append(varlenStruct(">B", result["name"])) #name
+    data.append(fixLenStruct(">H", int(result["year"])))
+    data.append(varlenStruct(">B", result["category"])) #category
+    data.append(varlenStruct(">H", result["preview_image_url"])) #preview_image_url
 
-    data.append(struct.pack(">B", len(result["name"])))
-    data.append(result["name"].encode("utf-8")) #name
-
-    data.append(struct.pack(">H", int(result["year"])))
-
-    data.append(struct.pack(">B", len(result["category"])))
-    data.append(result["category"].encode("utf-8")) #category
-
-    data.append(struct.pack(">H", len(result["preview_image_url"])))
-    data.append(result["preview_image_url"].encode("utf-8")) #preview_image_url
     for row in result["inventory"]:
         if(int(row["color_id"]) < 255 and int(row["count"]) < 256):
-            data.append(struct.pack(">BB", int(row["color_id"]), int(row["count"]))) 
+            data.append(fixLenStruct(">BB", int(row["color_id"]), int(row["count"]))) #color_id, count
         else:
-            data.append(struct.pack(">BBH", 255,int(row["color_id"]), int(row["count"]))) #color_id, count #max col 255 max count 3100
+            data.append(fixLenStruct(">BBH", 255, int(row["color_id"]), int(row["count"]))) #color_id, count #max col 255 max count 3100
         if(row["brick_type_id"].isdigit() and int(row["brick_type_id"]) < 65536): # #ingen brick_type_id er over 50 karakterer
             diglen = 100 + len(row["brick_type_id"])
-            data.append(struct.pack(">B", diglen))
-            data.append(struct.pack(">H", int(row["brick_type_id"])))
+            data.append(fixLenStruct(">BH", diglen, int(row["brick_type_id"]))) #brick_type_id
         elif(row["brick_type_id"].isdigit() and int(row["brick_type_id"]) < 4294967296):
             diglen = 200 + len(row["brick_type_id"])
-            data.append(struct.pack(">B", diglen))
-            data.append(struct.pack(">I", int(row["brick_type_id"])))
+            data.append(fixLenStruct(">BI", diglen, int(row["brick_type_id"])))
         else:
-            data.append(struct.pack(">B", len(row["brick_type_id"]))) 
-            data.append(str(row["brick_type_id"]).encode("utf-8"))
+            data.append(varlenStruct(">B", row["brick_type_id"]))
+        siste_del = row["preview_image_url"].split("/")[-1][:-4] 
+
+        if row["preview_image_url"].split(".")[-1] == "jpg":
+            linklen = 1
+        elif row["preview_image_url"].split(".")[-1] == "png":
+            linklen = 2
+
+        if(siste_del.isdigit() and int(siste_del) < 65536): 
+            diglen = 100 + linklen
+            data.append(fixLenStruct(">BH", diglen, int(siste_del)))
+        elif(siste_del.isdigit() and int(siste_del) < 4294967296):
+            diglen = 200 + linklen
+            data.append(fixLenStruct(">BI", diglen, int(siste_del)))
+        else:
+            data.append(varlenStruct(">B", siste_del))
+            data.append(fixLenStruct(">B", linklen)) #link
+
         # venter på svar om vi må ha disse med eller ikke, fjern kommentarer for å få bildet sendt.
-        #data.append(struct.pack(">H", len(row["preview_image_url"])))
-        #data.append(row["preview_image_url"].encode("utf-8")) #preview_image_url
-    
     string = b"".join(data)
     return Response(string, content_type="application/octet-stream")
 
