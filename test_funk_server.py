@@ -72,7 +72,7 @@ def test_null_get_set_and_inventory(): #checks if get_set_and_inventory handles 
     """
 
     fake_rows = [
-        (2, "Set 2", "", "", "", "", "", "", "", ""), #variables that can be null are represented as empty strings
+        (2, "Set 2", "", None, None, None, None, None, None, None), #variables that can be None (python null) are represented as empty strings, year none is handled in query
     ]
 
     db = MockDB(expected_query, ("2",), fake_rows)

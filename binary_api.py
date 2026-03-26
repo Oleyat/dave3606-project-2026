@@ -103,11 +103,12 @@ while offset + 2 < len(res.content):
     else:
         brick_image_url = readData(">B")
         digint = readDataRaw(">B")
-
+    brick_name = readData(">B")
     result["inventory"].append({
         "brick_type_id": brick_type_id,
         "color_id": color_id,
         "count": count,
+        "brick_name": brick_name,
         "preview_image_url": f"https://img.bricklink.com/P/{color_id}/{brick_image_url}.{links[digint]}"
     })                          # sparer 25 bytes per image ved å kun sende unike delen.
                                 # har observert at color_id sendes, og at P sannsynligvis står for PART., trenger da kun image url, og hvilken link type det er.
