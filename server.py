@@ -1,6 +1,5 @@
 import json
 import html
-import psycopg
 import struct
 import gzip
 from flask import Flask, Response, render_template, request
