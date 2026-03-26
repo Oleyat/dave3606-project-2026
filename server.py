@@ -142,20 +142,20 @@ def fixLenStruct(format, *value):
 
 def serialize_set_to_binary_data(result):
     data = []
-    data.append(varlenStruct(">B", result["set_id"])) #set_id
-    data.append(varlenStruct(">B", result["name"])) #name
+    data.append(varlenStruct(">B", result["set_id"]))
+    data.append(varlenStruct(">B", result["name"])) 
     data.append(fixLenStruct(">H", int(result["year"])))
-    data.append(varlenStruct(">B", result["category"])) #category
-    data.append(varlenStruct(">H", result["preview_image_url"])) #preview_image_url
+    data.append(varlenStruct(">B", result["category"])) 
+    data.append(varlenStruct(">H", result["preview_image_url"])) 
 
     for row in result["inventory"]:
         if(int(row["color_id"]) < 255 and int(row["count"]) < 256):
-            data.append(fixLenStruct(">BB", int(row["color_id"]), int(row["count"]))) #color_id, count
+            data.append(fixLenStruct(">BB", int(row["color_id"]), int(row["count"])))
         else:
             data.append(fixLenStruct(">BBH", 255, int(row["color_id"]), int(row["count"]))) #color_id, count #max col 255 max count 3100
         if(row["brick_type_id"].isdigit() and int(row["brick_type_id"]) < 65536): # #ingen brick_type_id er over 50 karakterer
             diglen = 100 + len(row["brick_type_id"])
-            data.append(fixLenStruct(">BH", diglen, int(row["brick_type_id"]))) #brick_type_id
+            data.append(fixLenStruct(">BH", diglen, int(row["brick_type_id"])))
         elif(row["brick_type_id"].isdigit() and int(row["brick_type_id"]) < 4294967296):
             diglen = 200 + len(row["brick_type_id"])
             data.append(fixLenStruct(">BI", diglen, int(row["brick_type_id"])))
@@ -177,7 +177,7 @@ def serialize_set_to_binary_data(result):
         else:
             data.append(varlenStruct(">B", siste_del))
             data.append(fixLenStruct(">B", linklen)) #link
-
+        data.append(varlenStruct(">B", row["brick_name"]))
     return  b"".join(data)
 
 @app.route("/")
