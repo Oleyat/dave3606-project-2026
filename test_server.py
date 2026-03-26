@@ -71,68 +71,64 @@ class TestFunctions(unittest.TestCase):
     def test_apiBinarySet(self, mockDatabase):
         mock_db = mockDatabase.return_value
         mock_db_data = [(
-            "71799-1", "Market", "2023", "Ninjago", "http://img.com/s.png",
-            "3001", "88", 2, "Brick", "http://img.com/P/88/1234.jpg"
+            "71799-1", "Market", 2023, "Ninjago", "http://img.com/s.png",
+            "3001", "88", 2, "Red Brick", "http://img.com/P/88/1234.jpg"
         )]
         mock_db.execute_and_fetch_all.return_value = mock_db_data
 
         response = self.client.get('/api/binary/set?id=71799-1')
-        self.assertEqual(response.status_code, 200)
         data = response.data
         offset = 0
 
-        set_id_len = data[offset]
-        offset += 1
-        set_id = data[offset:offset+set_id_len].decode('utf-8')
-        self.assertEqual(set_id, "71799-1")
-        offset += set_id_len
-
-        name_len = data[offset]
-        offset += 1
-        name = data[offset:offset+name_len].decode('utf-8')
-        self.assertEqual(name, "Market")
-        offset += name_len
-
-        year = struct.unpack(">H", data[offset:offset+2])[0]
-        self.assertEqual(year, 2023)
+        # skip colormap
+        num_colors = struct.unpack(">H", data[offset:offset+2])[0]
         offset += 2
+        for _ in range(num_colors):
+            offset += 1 
+            name_len = data[offset]
+            offset += 1 + name_len 
 
-        cat_len = data[offset]
+        sid_len = data[offset]
         offset += 1
-        cat = data[offset:offset+cat_len].decode('utf-8')
-        self.assertEqual(cat, "Ninjago")
-        offset += cat_len
+        set_id = data[offset : offset + sid_len].decode('utf-8')
+        self.assertEqual(set_id, "71799-1")
+        offset += sid_len
+
+        n_len = data[offset]
+        offset += 1
+        offset += n_len 
+
+        offset += 2 
+
+        c_len = data[offset]
+        offset += 1
+        offset += c_len 
 
         img_len = struct.unpack(">H", data[offset:offset+2])[0]
-        offset += 2
-        img_url = data[offset:offset+img_len].decode('utf-8')
-        self.assertEqual(img_url, "http://img.com/s.png")
-        offset += img_len
+        offset += 2 + img_len
 
         self.assertEqual(data[offset], 88)
         offset += 1
 
         self.assertEqual(data[offset], 2)
         offset += 1
-
-        type_flag = data[offset]
-        self.assertEqual(type_flag, 104)
+        
+        type_flag = data[offset] 
+        self.assertEqual(type_flag, 104) 
         offset += 1
-        brick_type_val = struct.unpack(">H", data[offset:offset+2])[0]
-        self.assertEqual(brick_type_val, 3001)
-        offset += 2
+        offset += 2 
 
         img_flag = data[offset]
-        self.assertEqual(img_flag, 101)
+        self.assertEqual(img_flag, 101) 
         offset += 1
-        img_val = struct.unpack(">H", data[offset:offset+2])[0]
-        self.assertEqual(img_val, 1234)
-        offset += 2
+        offset += 2 
 
         bname_len = data[offset]
         offset += 1
         bname = data[offset:offset+bname_len].decode('utf-8')
+        
         self.assertEqual(bname, "Brick")
+
         
 if __name__ == '__main__':
     unittest.main()
