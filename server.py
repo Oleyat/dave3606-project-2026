@@ -1,6 +1,5 @@
 import json
 import html
-import psycopg
 import struct
 import gzip
 from flask import Flask, Response, render_template, request
@@ -9,15 +8,72 @@ from database import Database
 
 app = Flask(__name__)
 
-def get_all_sets(db, page=1, limit=50): #returns fully rendered html string with all sets
-    offset = (page - 1) * limit
-    rows = []
-    query = "SELECT id, name, year, category, preview_image_url FROM lego_set order by id LIMIT %s OFFSET %s"
-    results = db.execute_and_fetch_all(query, (limit, offset))
+set_cache = {}
+MAX_CACHE_SIZE = 100
 
-    count_query = "SELECT COUNT(*) FROM lego_set"
-    total = db.execute_and_fetch_all(count_query)[0][0]
-    total_pages = (total + limit - 1) // limit
+def get_next_sets_forward(db, cursor = None, limit=50): #returns fully rendered html string with all sets
+    rows = []
+    if cursor is not None:
+        query = """
+        SELECT id, name, year, category, preview_image_url 
+        FROM lego_set 
+        WHERE id > %s
+        ORDER BY id
+        LIMIT %s
+        """
+        params = (cursor, limit + 1) #fetch extra row
+    else:
+        query = """
+        SELECT id, name, year, category, preview_image_url 
+        FROM lego_set order by id
+        LIMIT %s
+        """
+        params = (limit + 1,)  
+    results = db.execute_and_fetch_all(query, params)
+
+    has_next = len(results) > limit 
+    if has_next:
+        results = results[:-1] #remove extra row
+    
+    for row in results:
+        rows.append({  #no need to html.escape here, since Jinja will do it for us when we render the template.
+            "id": row[0],
+            "name": row[1],
+            "year": row[2],
+            "category": row[3],
+            "preview_image_url": row[4]
+        })
+    next_cursor = rows[-1]["id"] if rows and has_next else None
+    prev_cursor = cursor if cursor else None  #ensure prev_cursor is None if we are on the first page.
+
+    page_html = render_template("sets.html", rows=rows, next_cursor=next_cursor, prev_cursor=prev_cursor, limit=limit)
+    return page_html
+
+def get_next_sets_backward(db, cursor = None, limit=50): #returns fully rendered html string with all sets
+    rows = []
+    if cursor is not None:
+        query = """
+        SELECT id, name, year, category, preview_image_url 
+        FROM lego_set 
+        WHERE id < %s
+        ORDER BY id DESC
+        LIMIT %s
+        """
+        params = (cursor, limit +1) #fetch extra row
+    else:
+        query = """
+        SELECT id, name, year, category, preview_image_url 
+        FROM lego_set order by id desc
+        LIMIT %s
+        """
+        params = (limit + 1,)   
+    results = db.execute_and_fetch_all(query, params)
+
+    has_prev = len(results) > limit
+    if has_prev:
+        results = results[:-1] #remove extra row
+
+    results.reverse() #reverse to restore order.
 
     for row in results:
         rows.append({  #no need to html.escape here, since Jinja will do it for us when we render the template.
@@ -27,7 +83,10 @@ def get_all_sets(db, page=1, limit=50): #returns fully rendered html string with
             "category": row[3],
             "preview_image_url": row[4]
         })
-    page_html = render_template("sets.html", rows=rows, page=page, total_pages=total_pages, limit=limit)
+    next_cursor = cursor if cursor else None  #ensure next_cursor is None if we are on the last page.
+    prev_cursor = rows[0]["id"] if rows and has_prev else None
+
+    page_html = render_template("sets.html", rows=rows, next_cursor=next_cursor, prev_cursor=prev_cursor, limit=limit)
     return page_html
 
 def get_set_and_inventory(db, set_id): #returns a json string with information about set and inventiry.
@@ -57,7 +116,7 @@ def get_set_and_inventory(db, set_id): #returns a json string with information a
             "brick_type_id": html.escape(str(row[5])),
             "color_id": html.escape(str(row[6])),
             "count": html.escape(str(row[7])),
-            "name": html.escape(str(row[8])),
+            "brick_name": html.escape(str(row[8])),
             "preview_image_url": html.escape(str(row[9]))
         })
             print(row[8])
@@ -81,70 +140,7 @@ def varlenStruct(format, value):
 def fixLenStruct(format, *value):
     return struct.pack(format, *value)
 
-@app.route("/")
-def index():
-    with open("templates/index.html", 'r') as f:
-        template = f.read()
-    return Response(template)
-
-@app.route("/sets")
-def sets():
-    db = Database()
-    getEncoding = request.args.get('encoding')
-    page = int(request.args.get('page', 1))
-    limit = int(request.args.get('limit', 50))
-    start_time = perf_counter()
-    try:
-        page_html = get_all_sets(db, page, limit)
-        print(f"Time to render sets page {page}: {perf_counter() - start_time}")
-    finally:
-        db.close()
-
-    gzip_page_html, used_encoding = encode_page_html(page_html, getEncoding)
-    return Response(gzip_page_html, headers={"Content-Encoding": "gzip", "Cache-Control" : "max-age=60"}, content_type=f"text/html; charset={used_encoding}")
-
-@app.route("/set")
-def legoSet():  # We don't want to call the function `set`, since that would hide the `set` data type.
-    with open("templates/set.html", 'r') as f:
-        template = f.read()
-    return Response(template)
-
-
-set_cache = {}
-MAX_CACHE_SIZE = 100
-
-@app.route("/api/set")
-def apiSet():
-    set_id = request.args.get("id")
-
-    # Sjekk cache først
-    if set_id in set_cache:
-        # Move to end (most recently used)
-        result = set_cache.pop(set_id)
-        set_cache[set_id] = result
-        return Response(result, content_type="application/json")
-    db = Database()
-    try:
-        result = get_set_and_inventory(db, set_id)
-    finally:
-        db.close()
-
-    # Oppdater cache
-    set_cache[set_id] = result
-    if len(set_cache) > MAX_CACHE_SIZE:
-        oldest_key = next(iter(set_cache))
-        del set_cache[oldest_key]
-    return Response(result, content_type="application/json")
-
-
-@app.route("/api/binary/set")
-def apiBinarySet():
-    set_id = request.args.get("id")
-    db = Database()
-    try:
-        result = json.loads(get_set_and_inventory(db, set_id))
-    finally:
-        db.close()
+def serialize_set_to_binary_data(result):
     data = []
     data.append(varlenStruct(">B", result["set_id"])) #set_id
     data.append(varlenStruct(">B", result["name"])) #name
@@ -182,8 +178,75 @@ def apiBinarySet():
             data.append(varlenStruct(">B", siste_del))
             data.append(fixLenStruct(">B", linklen)) #link
 
-        # venter på svar om vi må ha disse med eller ikke, fjern kommentarer for å få bildet sendt.
-    string = b"".join(data)
+    return  b"".join(data)
+
+@app.route("/")
+def index():
+    with open("templates/index.html", 'r') as f:
+        template = f.read()
+    return Response(template)
+
+@app.route("/sets")
+def sets():
+    db = Database()
+    getEncoding = request.args.get('encoding')
+    cursor = request.args.get("cursor")
+    direction = request.args.get("direction", "forward")
+    start_time = perf_counter()
+    try:
+        if direction == "back":
+            page_html= get_next_sets_backward(db, cursor)
+        else:
+            page_html = get_next_sets_forward(db, cursor)
+        print(f"Time to render sets page {cursor}: {perf_counter() - start_time}")
+    finally:
+        db.close()
+
+    gzip_page_html, used_encoding = encode_page_html(page_html, getEncoding)
+    return Response(gzip_page_html, headers={"Content-Encoding": "gzip", "Cache-Control" : "max-age=60"}, content_type=f"text/html; charset={used_encoding}")
+
+@app.route("/set")
+def legoSet():  # We don't want to call the function `set`, since that would hide the `set` data type.
+    with open("templates/set.html", 'r') as f:
+        template = f.read()
+    return Response(template)
+
+
+
+@app.route("/api/set")
+def apiSet():
+    set_id = request.args.get("id")
+
+    # Sjekk cache først
+    if set_id in set_cache:
+        # Move to end (most recently used)
+        result = set_cache.pop(set_id)
+        set_cache[set_id] = result
+        return Response(result, content_type="application/json")
+    db = Database()
+    try:
+        result = get_set_and_inventory(db, set_id)
+    finally:
+        db.close()
+
+    # Oppdater cache
+    set_cache[set_id] = result
+    if len(set_cache) > MAX_CACHE_SIZE:
+        oldest_key = next(iter(set_cache))
+        del set_cache[oldest_key]
+    return Response(result, content_type="application/json")
+
+
+@app.route("/api/binary/set")
+def apiBinarySet():
+    set_id = request.args.get("id")
+    db = Database()
+    try:
+        result = json.loads(get_set_and_inventory(db, set_id))
+        string = serialize_set_to_binary_data(result)
+    finally:
+        db.close()
+    
     return Response(string, content_type="application/octet-stream")
 
 

@@ -1,7 +1,7 @@
 
 ## 1: Database constraints
 
-Tabellen lego_brick kan enten ha en surrogatprimærnøkkel eller en naturlig primærnøkkel, der den naturlige PK består av to mulige kombinasjon av `brick_type_id` og `color_id`. For tabellen lego_inventory gjelder det samme med kombinasjonsnøkkel av `set_id`, `brick_type_id` og `color_id`, men grunnet flere kolonner i primærnøkkelen er det 6 mulige valg for primærnøkkelen. Under er SQl koden for å sette primærnøklene i de to tabellene.
+Tabellen lego_brick kan enten ha en surrogatprimærnøkkel eller en naturlig primærnøkkel, der den naturlige PK består av to mulige kombinasjon av `brick_type_id` og `color_id`. For tabellen lego_inventory gjelder det samme med kombinasjonsnøkkel av `set_id`, `brick_type_id` og `color_id`, men grunnet flere kolonner i primærnøkkelen er det 6 permutasjoner for primærnøkkelen. Under er SQl koden for å sette primærnøklene i de to tabellene.
 
   
 
@@ -46,7 +46,7 @@ Ved testing av spørringene før og etter opprettelsen av indekser på lego_inve
 
 ## 3. Algorithmic complexity improvements
 
-I den originale algoritmen tar håndteringen av endepunktet http://localhost:5000/sets omtrent 4,332 sekunder, hovedsakelig grunnet den høye kompleksiteten ved sammensettingen av radstrenger. Kodelinjen `rows = existing_rows + f'<tr><td><a....,`  må  først  kopiere  over  de  eksisterende  radene  før  den  slås  sammen  med  den  nye  raden,  noe  som  gir  denne  linjen  en  kompleksitet  på  O(n^2^).  De  andre  elementene  i  funksjonen  har  lavere  kompleksitet,  dermed  er  den  samlede  kompleksiteten  O(n^2^).  Bare  ved  å  definere  rows  som  er  liste  og  bruke  append  fremfor  konkatinering  av  strenger  tar  håndteringen  bare  115,0  ms  sekunder,  noe  som  senkes  ytterlige  til  50,19  ms  sekunder  når  man  tar  i  bruk  paginering.  Det  er  verdt  å  påpeke  at  de  første  sidene  vil  koste  en  del  mindre  enn  de  siste  sidene  på  grunn  av  offset,  som  betyr  at  databasen  må  lese  alle  radene  den  skal  hoppe  over.
+I den originale algoritmen tar håndteringen av endepunktet http://localhost:5000/sets omtrent 4,332 sekunder, hovedsakelig grunnet den høye kompleksiteten ved sammensettingen av radstrenger. Kodelinjen `rows = existing_rows + f'<tr><td><a....,`  må  først  kopiere  over  de  eksisterende  radene  før  den  slås  sammen  med  den  nye  raden,  noe  som  gir  denne  linjen  en  kompleksitet  på  O(n^2^).  De  andre  elementene  i  funksjonen  har  lavere  kompleksitet,  dermed  er  den  samlede  kompleksiteten  O(n^2^).  Bare  ved  å  definere  rows  som  er  liste  og  bruke  append  fremfor  konkatinering  av  strenger  tar  håndteringen  bare  115,0  ms  sekunder,  noe  som  senkes  ytterlige  til  50,19  ms  sekunder  når  man  tar  i  bruk  paginering.  For å sikre konstant tidskompleksitet uavhengig av posisjon i listen og stabilitet ved endring av data byttet vi fra paginering med offset til cursor paginering.
 
   
   
