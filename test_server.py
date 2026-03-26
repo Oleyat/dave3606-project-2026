@@ -211,6 +211,25 @@ def test_get_next_sets_forward_order(): #check explicitly that order is correct
     ids = [row["id"] for row in result["rows"]]
     assert ids == [11, 12]
 
+def test_get_next_sets_forward_no_next_page():
+    expected_query = """
+        SELECT id, name, year, category, preview_image_url
+        FROM lego_set
+        WHERE id > %s
+        ORDER BY id
+        LIMIT %s
+    """
+
+    fake_rows = [
+        (11, "Set A", 2001, "City", "a.jpg"),
+        (12, "Set B", 2002, "Space", "b.jpg"),
+    ]
+
+    db = MockDB(expected_query, (10, 3), fake_rows)
+    result = get_next_sets_forward(db, cursor=10, limit=2)
+
+    assert result["next_cursor"] is None
+    assert result["prev_cursor"] == 11
 
 def test_get_next_sets_backward():
     expected_query = """
@@ -272,3 +291,24 @@ def test_get_next_sets_backward_order(): #check explicitly that order is correct
 
     ids = [row["id"] for row in result["rows"]]
     assert ids == [18, 19] #should be order asceningly
+
+def test_get_next_sets_backward_no_previous_page():
+    expected_query = """
+        SELECT id, name, year, category, preview_image_url
+        FROM lego_set
+        WHERE id < %s
+        ORDER BY id DESC
+        LIMIT %s
+    """
+
+    fake_rows = [
+        (2, "Set B", 2002, "Space", "b.jpg"),
+        (1, "Set A", 2001, "City", "a.jpg"),
+    ]
+
+    db = MockDB(expected_query, (3, 3), fake_rows)
+    result = get_next_sets_backward(db, cursor=3, limit=2)
+
+    assert [row["id"] for row in result["rows"]] == [1, 2]
+    assert result["next_cursor"] == 2
+    assert result["prev_cursor"] is None
