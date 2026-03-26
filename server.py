@@ -57,7 +57,7 @@ def get_set_and_inventory(db, set_id): #returns a json string with information a
             "brick_type_id": html.escape(str(row[5])),
             "color_id": html.escape(str(row[6])),
             "count": html.escape(str(row[7])),
-            "name": html.escape(str(row[8])),
+            "brick_name": html.escape(str(row[8])),
             "preview_image_url": html.escape(str(row[9]))
         })
     json_result = json.dumps(result, indent=4)
