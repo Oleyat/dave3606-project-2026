@@ -8,8 +8,11 @@ class MockDB:
         self.fake_rows = fake_rows
         self.closed = False
 
+    def normalize_sql(self, sql): #means the querys dont have to be identically formatted
+        return " ".join(sql.split())
+
     def execute_and_fetch_all(self, query, params=None): #check if query and params match what we expect, then return fake rows.
-        assert query.strip() == self.expected_query.strip()
+        assert self.normalize_sql(query) == self.normalize_sql(self.expected_query)
         assert params == self.expected_params
         return self.fake_rows
 
@@ -132,7 +135,7 @@ def test_get_set_and_inventory_html_escape(): #checks if get_set_and_inventory c
     parsed = json.loads(result)
 
     assert parsed["set_id"] == "4"
-    assert parsed["name"] == "&lt;Set &amp; 4&gt;"
+    assert parsed["name"] == "&lt;Set &amp; 4&gt;" #the actual output it should have after escaping
     assert parsed["year"] == "2021"
     assert parsed["category"] == "Category &lt;B&gt;"
     assert parsed["preview_image_url"] == "url&amp;4"
@@ -146,3 +149,43 @@ def test_get_set_and_inventory_html_escape(): #checks if get_set_and_inventory c
             "preview_image_url": "brick_url_c"
         }
     ]
+
+def test_get_next_sets_forward():
+    expected_query = """
+        SELECT id, name, year, category, preview_image_url
+        FROM lego_set
+        WHERE id > %s
+        ORDER BY id
+        LIMIT %s
+    """
+
+    fake_rows = [
+        (11, "Set A", 2001, "City", "a.jpg"),
+        (12, "Set B", 2002, "Space", "b.jpg"),
+        (13, "Set C", 2003, "Castle", "c.jpg"),
+    ]
+
+    db = MockDB(expected_query, (10, 3), fake_rows) #limit is 2 but we fetch 3 to check if has next in function
+    result = get_next_sets_forward(db, cursor=10, limit=2)
+
+    assert result == {
+        "rows": [
+            {
+                "id": 11,
+                "name": "Set A",
+                "year": 2001,
+                "category": "City",
+                "preview_image_url": "a.jpg"
+            },
+            {
+                "id": 12,
+                "name": "Set B",
+                "year": 2002,
+                "category": "Space",
+                "preview_image_url": "b.jpg"
+            }
+        ],
+        "next_cursor": 12,
+        "prev_cursor": 10,
+        "limit": 2
+    }

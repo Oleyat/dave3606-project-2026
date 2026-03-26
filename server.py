@@ -46,8 +46,13 @@ def get_next_sets_forward(db, cursor = None, limit=50): #returns fully rendered 
     next_cursor = rows[-1]["id"] if rows and has_next else None
     prev_cursor = cursor if cursor else None  #ensure prev_cursor is None if we are on the first page.
 
-    page_html = render_template("sets.html", rows=rows, next_cursor=next_cursor, prev_cursor=prev_cursor, limit=limit)
-    return page_html
+    return {
+        "rows": rows,
+        "next_cursor": next_cursor,
+        "prev_cursor": prev_cursor,
+        "limit": limit
+    }
+
 
 def get_next_sets_backward(db, cursor = None, limit=50): #returns fully rendered html string with all sets
     rows = []
@@ -86,8 +91,12 @@ def get_next_sets_backward(db, cursor = None, limit=50): #returns fully rendered
     next_cursor = cursor if cursor else None  #ensure next_cursor is None if we are on the last page.
     prev_cursor = rows[0]["id"] if rows and has_prev else None
 
-    page_html = render_template("sets.html", rows=rows, next_cursor=next_cursor, prev_cursor=prev_cursor, limit=limit)
-    return page_html
+    return{
+        "rows": rows,
+        "next_cursor": next_cursor,
+        "prev_cursor": prev_cursor,
+        "limit": limit
+    }
 
 def get_set_and_inventory(db, set_id): #returns a json string with information about set and inventiry.
     result = {"set_id": set_id,
@@ -200,9 +209,10 @@ def sets():
     start_time = perf_counter()
     try:
         if direction == "back":
-            page_html= get_next_sets_backward(db, cursor)
+            page_data= get_next_sets_backward(db, cursor)
         else:
-            page_html = get_next_sets_forward(db, cursor)
+            page_data = get_next_sets_forward(db, cursor)
+        page_html = render_template("sets.html", **page_data)
         print(f"Time to render sets page {cursor}: {perf_counter() - start_time}")
     finally:
         db.close()
