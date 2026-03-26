@@ -81,14 +81,14 @@ bit & 2^32^ grensen. Om det er under så kan vi sende det som et rått tall + en
 
 Dermed ender vi opp med følgende filformat:
 
-|  | id | name |year|preview_image_url |Category |brick_type_id |color_id|count|*kontroll|brick_name| 
-|--|--|--|--|--|--|--|--|--|--|--|
-| Bytes |  Minst 1 |Minst 1|2|Minst 1|Minst 1|Minst 1|1 |2 & 1| 1|Minst 1|
-| Format | Variabel, max 255 tegn | Variabel, max 255 tegn | >H | Variabel, max 255 tegn | Variabel, max 255 tegn |Variabel, max 255 tegn & >B eller >H|>B| >B & >H| >B | Variabel, max 255 tegn|
+|  |color_map| id | name |year|preview_image_url |Category |brick_type_id |color_id|count|*kontroll|brick_name| 
+|--|--|--|--|--|--|--|--|--|--|--|--|
+| Bytes | Minst 1| Minst 1 |Minst 1|2|Minst 1|Minst 1|Minst 1|1 |2 & 1| 1|Minst 1|
+| Format | Variabel først >B for antall farger, deretter >B for fargeid, >B for len farge navn, Variabel, 255 tegn for farge navnet.|Variabel, max 255 tegn | Variabel, max 255 tegn | >H | Variabel, max 255 tegn | Variabel, max 255 tegn |Variabel, max 255 tegn & >B eller >H|>B| >B & >H| >B | Variabel, max 255 tegn|
 ######    kontroll brukes som signal byte for color_id, count, og brick_type_id sine optimaliseringer.
 > preview_image_url kommer fra lego_set og lego brikkene, USIKKER OM VI SKAL HA DEN MED FOR BRIKKER 
 
-For eksempel for lego-set: `71799-1` i browser får du da respons på ca `441`kb mens med vår binær respons får du kun `95`kb.
+For eksempel for lego-set: `71799-1` i browser får du da respons på ca `441`kb mens med vår binær respons får du kun `81`kb.
 > Uten brick_name får vi ned til 16867 bytes.
 
 
