@@ -16,9 +16,6 @@ class MockDB:
         assert self.normalize_sql(query) == self.normalize_sql(self.expected_query)
         assert params == self.expected_params
         return self.fake_rows
-
-    def close(self): #checks if close is called 
-        self.closed = True
       
 def test_get_set_and_inventory(): #checks if get_set_and_inventory returns correct json string
     expected_query = """
