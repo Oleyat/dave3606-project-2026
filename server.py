@@ -108,16 +108,16 @@ def get_set_and_inventory(db, set_id): #returns a json string with information a
     firstrow = rows[0]
     if firstrow is not None:
         result["name"] = html.escape(firstrow[1])
-        result["year"] = html.escape(firstrow[2]) # kan bli null pga html.escape.
-        result["category"] = html.escape(firstrow[3])
-        result["preview_image_url"] = html.escape(firstrow[4])
+        result["year"] = html.escape(firstrow[2] or "") # kan være None i databasen, så vi må håndtere det.
+        result["category"] = html.escape(firstrow[3] or "")
+        result["preview_image_url"] = html.escape(firstrow[4] or "")
         for row in rows:
             result["inventory"].append({
-            "brick_type_id": html.escape(str(row[5])),
-            "color_id": html.escape(str(row[6])),
-            "count": html.escape(str(row[7])),
-            "brick_name": html.escape(str(row[8])),
-            "preview_image_url": html.escape(str(row[9]))
+            "brick_type_id": html.escape(str(row[5] or "")),
+            "color_id": html.escape(str(row[6] or "")),
+            "count": html.escape(str(row[7] or "")),
+            "brick_name": html.escape(str(row[8] or "")),
+            "preview_image_url": html.escape(str(row[9] or ""))
         })
     json_result = json.dumps(result, indent=4)
     return json_result
@@ -176,6 +176,8 @@ def serialize_set_to_binary_data(result):
         else:
             data.append(varlenStruct(">B", siste_del))
             data.append(fixLenStruct(">B", linklen)) #link
+
+            # mangler brick_name 
 
     return  b"".join(data)
 

@@ -16,7 +16,7 @@ class MockDB:
     def close(self): #checks if close is called 
         self.closed = True
       
-def test_get_set_and_inventory():
+def test_get_set_and_inventory(): #checks if get_set_and_inventory returns correct json string
     expected_query = """
         SELECT s.id, s.name, COALESCE(s.year::text, ''), s.category, s.preview_image_url, inv.brick_type_id, inv.color_id, inv.count, b.name, b.preview_image_url
         FROM lego_set s 
@@ -57,3 +57,36 @@ def test_get_set_and_inventory():
             "preview_image_url": "brick_url_b"
         }
     ]   
+
+def test_null_get_set_and_inventory(): #checks if get_set_and_inventory handles null values correctly
+    expected_query = """
+        SELECT s.id, s.name, COALESCE(s.year::text, ''), s.category, s.preview_image_url, inv.brick_type_id, inv.color_id, inv.count, b.name, b.preview_image_url
+        FROM lego_set s 
+        LEFT JOIN lego_inventory inv ON s.id=inv.set_id 
+        LEFT JOIN lego_brick b ON inv.brick_type_id = b.brick_type_id AND inv.color_id = b.color_id
+        WHERE s.id = %s
+    """
+
+    fake_rows = [
+        (2, "Set 2", "", "", "", "", "", "", "", ""), #variables that can be null are represented as empty strings
+    ]
+
+    db = MockDB(expected_query, ("2",), fake_rows)
+    result = get_set_and_inventory(db, "2")
+    parsed = json.loads(result)
+
+    assert parsed["set_id"] == "2"
+    assert parsed["name"] == "Set 2"
+    assert parsed["year"] == "" 
+    assert parsed["category"] == ""
+    assert parsed["preview_image_url"] == ""
+    
+    assert parsed["inventory"] == [
+        {
+            "brick_type_id": "",
+            "color_id": "",
+            "count": "",
+            "brick_name": "",
+            "preview_image_url": ""
+        }
+    ]
