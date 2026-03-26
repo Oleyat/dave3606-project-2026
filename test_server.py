@@ -90,3 +90,59 @@ def test_null_get_set_and_inventory(): #checks if get_set_and_inventory handles 
             "preview_image_url": ""
         }
     ]
+
+def test_get_set_and_inventory_no_rows(): #checks if get_set_and_inventory returns correct json string when no rows are returned from the database
+    expected_query = """
+        SELECT s.id, s.name, COALESCE(s.year::text, ''), s.category, s.preview_image_url, inv.brick_type_id, inv.color_id, inv.count, b.name, b.preview_image_url
+        FROM lego_set s 
+        LEFT JOIN lego_inventory inv ON s.id=inv.set_id 
+        LEFT JOIN lego_brick b ON inv.brick_type_id = b.brick_type_id AND inv.color_id = b.color_id
+        WHERE s.id = %s
+    """
+
+    fake_rows = [] #no rows returned
+
+    db = MockDB(expected_query, ("3",), fake_rows)
+    result = get_set_and_inventory(db, "3")
+    parsed = json.loads(result)
+
+    assert parsed["set_id"] == "3" #returns set_id even if no rows are returned, since we initialize it in the result dict.
+    assert parsed["name"] == ""
+    assert parsed["year"] == "" 
+    assert parsed["category"] == ""
+    assert parsed["preview_image_url"] == ""
+    
+    assert parsed["inventory"] == []
+
+def test_get_set_and_inventory_html_escape(): #checks if get_set_and_inventory correctly escapes html special characters to prevent XSS vulnerabilities
+    expected_query = """
+        SELECT s.id, s.name, COALESCE(s.year::text, ''), s.category, s.preview_image_url, inv.brick_type_id, inv.color_id, inv.count, b.name, b.preview_image_url
+        FROM lego_set s 
+        LEFT JOIN lego_inventory inv ON s.id=inv.set_id 
+        LEFT JOIN lego_brick b ON inv.brick_type_id = b.brick_type_id AND inv.color_id = b.color_id
+        WHERE s.id = %s
+    """
+
+    fake_rows = [
+        (4, "<Set & 4>", "2021", "Category <B>", "url&4", "102", "12", "4", "Brick <C>", "brick_url_c"),
+    ]
+
+    db = MockDB(expected_query, ("4",), fake_rows)
+    result = get_set_and_inventory(db, "4")
+    parsed = json.loads(result)
+
+    assert parsed["set_id"] == "4"
+    assert parsed["name"] == "&lt;Set &amp; 4&gt;"
+    assert parsed["year"] == "2021"
+    assert parsed["category"] == "Category &lt;B&gt;"
+    assert parsed["preview_image_url"] == "url&amp;4"
+    
+    assert parsed["inventory"] == [
+        {
+            "brick_type_id": "102",
+            "color_id": "12",
+            "count": "4",
+            "brick_name": "Brick &lt;C&gt;",
+            "preview_image_url": "brick_url_c"
+        }
+    ]

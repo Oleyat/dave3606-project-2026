@@ -105,6 +105,10 @@ def get_set_and_inventory(db, set_id): #returns a json string with information a
         WHERE s.id = %s
     """
     rows = db.execute_and_fetch_all(query, (set_id,))
+
+    if not rows: #sjekker om man får rader
+        return json.dumps(result, indent=4)
+
     firstrow = rows[0]
     if firstrow is not None:
         result["name"] = html.escape(firstrow[1])
