@@ -9,15 +9,69 @@ from database import Database
 
 app = Flask(__name__)
 
-def get_all_sets(db, page=1, limit=50): #returns fully rendered html string with all sets
-    offset = (page - 1) * limit
+def get_next_sets_forward(db, cursor = None, limit=50): #returns fully rendered html string with all sets
     rows = []
-    query = "SELECT id, name, year, category, preview_image_url FROM lego_set order by id LIMIT %s OFFSET %s"
-    results = db.execute_and_fetch_all(query, (limit, offset))
+    if cursor is not None:
+        query = """
+        SELECT id, name, year, category, preview_image_url 
+        FROM lego_set 
+        WHERE id > %s
+        ORDER BY id
+        LIMIT %s
+        """
+        params = (cursor, limit + 1) #fetch extra row
+    else:
+        query = """
+        SELECT id, name, year, category, preview_image_url 
+        FROM lego_set order by id
+        LIMIT %s
+        """
+        params = (limit + 1,)  
+    results = db.execute_and_fetch_all(query, params)
 
-    count_query = "SELECT COUNT(*) FROM lego_set"
-    total = db.execute_and_fetch_all(count_query)[0][0]
-    total_pages = (total + limit - 1) // limit
+    has_next = len(results) > limit 
+    if has_next:
+        results = results[:-1] #remove extra row
+    
+    for row in results:
+        rows.append({  #no need to html.escape here, since Jinja will do it for us when we render the template.
+            "id": row[0],
+            "name": row[1],
+            "year": row[2],
+            "category": row[3],
+            "preview_image_url": row[4]
+        })
+    next_cursor = rows[-1]["id"] if rows and has_next else None
+    prev_cursor = cursor if cursor else None  #ensure prev_cursor is None if we are on the first page.
+
+    page_html = render_template("sets.html", rows=rows, next_cursor=next_cursor, prev_cursor=prev_cursor, limit=limit)
+    return page_html
+
+def get_next_sets_backward(db, cursor = None, limit=50): #returns fully rendered html string with all sets
+    rows = []
+    if cursor is not None:
+        query = """
+        SELECT id, name, year, category, preview_image_url 
+        FROM lego_set 
+        WHERE id < %s
+        ORDER BY id DESC
+        LIMIT %s
+        """
+        params = (cursor, limit +1) #fetch extra row
+    else:
+        query = """
+        SELECT id, name, year, category, preview_image_url 
+        FROM lego_set order by id desc
+        LIMIT %s
+        """
+        params = (limit + 1,)   
+    results = db.execute_and_fetch_all(query, params)
+
+    has_prev = len(results) > limit
+    if has_prev:
+        results = results[:-1] #remove extra row
+
+    results.reverse() #reverse to restore order.
 
     for row in results:
         rows.append({  #no need to html.escape here, since Jinja will do it for us when we render the template.
@@ -27,7 +81,10 @@ def get_all_sets(db, page=1, limit=50): #returns fully rendered html string with
             "category": row[3],
             "preview_image_url": row[4]
         })
-    page_html = render_template("sets.html", rows=rows, page=page, total_pages=total_pages, limit=limit)
+    next_cursor = cursor if cursor else None  #ensure next_cursor is None if we are on the last page.
+    prev_cursor = rows[0]["id"] if rows and has_prev else None
+
+    page_html = render_template("sets.html", rows=rows, next_cursor=next_cursor, prev_cursor=prev_cursor, limit=limit)
     return page_html
 
 def get_set_and_inventory(db, set_id): #returns a json string with information about set and inventiry.
@@ -90,12 +147,15 @@ def index():
 def sets():
     db = Database()
     getEncoding = request.args.get('encoding')
-    page = int(request.args.get('page', 1))
-    limit = int(request.args.get('limit', 50))
+    cursor = request.args.get("cursor")
+    direction = request.args.get("direction", "forward")
     start_time = perf_counter()
     try:
-        page_html = get_all_sets(db, page, limit)
-        print(f"Time to render sets page {page}: {perf_counter() - start_time}")
+        if direction == "back":
+            page_html= get_next_sets_backward(db, cursor)
+        else:
+            page_html = get_next_sets_forward(db, cursor)
+        print(f"Time to render sets page {cursor}: {perf_counter() - start_time}")
     finally:
         db.close()
 

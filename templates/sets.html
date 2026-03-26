@@ -29,14 +29,14 @@
                 {% endfor %}
             </tbody>
         </table>
-        {% if total_pages > 1 %}
+        {% if next_cursor or prev_cursor %}
         <div style="margin-top: 1rem; text-align: center;">
-            {% if page > 1 %}
-            <a href="?page={{ page-1 }}&limit={{ limit }}" style="margin-right: 1rem;">Previous</a>
+            {% if prev_cursor %}
+            <a href="?cursor={{ prev_cursor }}&direction=back" style="margin-right: 1rem;">Previous</a>
             {% endif %}
-            Page {{ page }} of {{ total_pages }}
-            {% if page < total_pages %}
-            <a href="?page={{ page+1 }}&limit={{ limit }}" style="margin-left: 1rem;">Next</a>
+
+            {% if next_cursor %}
+            <a href="?cursor={{ next_cursor }}&direction=forward" style="margin-left: 1rem;">Next</a>
             {% endif %}
         </div>
         {% endif %}
