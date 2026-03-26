@@ -1,6 +1,5 @@
 import json
 import html
-import psycopg
 import struct
 import gzip
 from flask import Flask, Response, render_template, request
@@ -8,6 +7,9 @@ from time import perf_counter
 from database import Database
 
 app = Flask(__name__)
+
+set_cache = {}
+MAX_CACHE_SIZE = 100
 
 def get_next_sets_forward(db, cursor = None, limit=50): #returns fully rendered html string with all sets
     rows = []
@@ -137,73 +139,7 @@ def varlenStruct(format, value):
 def fixLenStruct(format, *value):
     return struct.pack(format, *value)
 
-@app.route("/")
-def index():
-    with open("templates/index.html", 'r') as f:
-        template = f.read()
-    return Response(template)
-
-@app.route("/sets")
-def sets():
-    db = Database()
-    getEncoding = request.args.get('encoding')
-    cursor = request.args.get("cursor")
-    direction = request.args.get("direction", "forward")
-    start_time = perf_counter()
-    try:
-        if direction == "back":
-            page_html= get_next_sets_backward(db, cursor)
-        else:
-            page_html = get_next_sets_forward(db, cursor)
-        print(f"Time to render sets page {cursor}: {perf_counter() - start_time}")
-    finally:
-        db.close()
-
-    gzip_page_html, used_encoding = encode_page_html(page_html, getEncoding)
-    return Response(gzip_page_html, headers={"Content-Encoding": "gzip", "Cache-Control" : "max-age=60"}, content_type=f"text/html; charset={used_encoding}")
-
-@app.route("/set")
-def legoSet():  # We don't want to call the function `set`, since that would hide the `set` data type.
-    with open("templates/set.html", 'r') as f:
-        template = f.read()
-    return Response(template)
-
-
-set_cache = {}
-MAX_CACHE_SIZE = 100
-
-@app.route("/api/set")
-def apiSet():
-    set_id = request.args.get("id")
-
-    # Sjekk cache først
-    if set_id in set_cache:
-        # Move to end (most recently used)
-        result = set_cache.pop(set_id)
-        set_cache[set_id] = result
-        return Response(result, content_type="application/json")
-    db = Database()
-    try:
-        result = get_set_and_inventory(db, set_id)
-    finally:
-        db.close()
-
-    # Oppdater cache
-    set_cache[set_id] = result
-    if len(set_cache) > MAX_CACHE_SIZE:
-        oldest_key = next(iter(set_cache))
-        del set_cache[oldest_key]
-    return Response(result, content_type="application/json")
-
-
-@app.route("/api/binary/set")
-def apiBinarySet():
-    set_id = request.args.get("id")
-    db = Database()
-    try:
-        result = json.loads(get_set_and_inventory(db, set_id))
-    finally:
-        db.close()
+def serialize_set_to_binary_data(result):
     data = []
     data.append(varlenStruct(">B", result["set_id"])) #set_id
     data.append(varlenStruct(">B", result["name"])) #name
@@ -241,8 +177,75 @@ def apiBinarySet():
             data.append(varlenStruct(">B", siste_del))
             data.append(fixLenStruct(">B", linklen)) #link
 
-        # venter på svar om vi må ha disse med eller ikke, fjern kommentarer for å få bildet sendt.
-    string = b"".join(data)
+    return  b"".join(data)
+
+@app.route("/")
+def index():
+    with open("templates/index.html", 'r') as f:
+        template = f.read()
+    return Response(template)
+
+@app.route("/sets")
+def sets():
+    db = Database()
+    getEncoding = request.args.get('encoding')
+    cursor = request.args.get("cursor")
+    direction = request.args.get("direction", "forward")
+    start_time = perf_counter()
+    try:
+        if direction == "back":
+            page_html= get_next_sets_backward(db, cursor)
+        else:
+            page_html = get_next_sets_forward(db, cursor)
+        print(f"Time to render sets page {cursor}: {perf_counter() - start_time}")
+    finally:
+        db.close()
+
+    gzip_page_html, used_encoding = encode_page_html(page_html, getEncoding)
+    return Response(gzip_page_html, headers={"Content-Encoding": "gzip", "Cache-Control" : "max-age=60"}, content_type=f"text/html; charset={used_encoding}")
+
+@app.route("/set")
+def legoSet():  # We don't want to call the function `set`, since that would hide the `set` data type.
+    with open("templates/set.html", 'r') as f:
+        template = f.read()
+    return Response(template)
+
+
+
+@app.route("/api/set")
+def apiSet():
+    set_id = request.args.get("id")
+
+    # Sjekk cache først
+    if set_id in set_cache:
+        # Move to end (most recently used)
+        result = set_cache.pop(set_id)
+        set_cache[set_id] = result
+        return Response(result, content_type="application/json")
+    db = Database()
+    try:
+        result = get_set_and_inventory(db, set_id)
+    finally:
+        db.close()
+
+    # Oppdater cache
+    set_cache[set_id] = result
+    if len(set_cache) > MAX_CACHE_SIZE:
+        oldest_key = next(iter(set_cache))
+        del set_cache[oldest_key]
+    return Response(result, content_type="application/json")
+
+
+@app.route("/api/binary/set")
+def apiBinarySet():
+    set_id = request.args.get("id")
+    db = Database()
+    try:
+        result = json.loads(get_set_and_inventory(db, set_id))
+        string = serialize_set_to_binary_data(result)
+    finally:
+        db.close()
+    
     return Response(string, content_type="application/octet-stream")
 
 
