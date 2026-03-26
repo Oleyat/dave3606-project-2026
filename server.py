@@ -49,7 +49,7 @@ def get_set_and_inventory(db, set_id): #returns a json string with information a
     firstrow = rows[0]
     if firstrow is not None:
         result["name"] = html.escape(firstrow[1])
-        result["year"] = html.escape(firstrow[2]) # kan bli null pga html.escape.
+        result["year"] = firstrow[2] # kan bli null pga html.escape.
         result["category"] = html.escape(firstrow[3])
         result["preview_image_url"] = html.escape(firstrow[4])
         for row in rows:
@@ -60,6 +60,7 @@ def get_set_and_inventory(db, set_id): #returns a json string with information a
             "name": html.escape(str(row[8])),
             "preview_image_url": html.escape(str(row[9]))
         })
+            print(row[8])
     json_result = json.dumps(result, indent=4)
     return json_result
 
