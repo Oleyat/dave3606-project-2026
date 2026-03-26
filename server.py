@@ -119,7 +119,6 @@ def get_set_and_inventory(db, set_id): #returns a json string with information a
             "brick_name": html.escape(str(row[8])),
             "preview_image_url": html.escape(str(row[9]))
         })
-            print(row[8])
     json_result = json.dumps(result, indent=4)
     return json_result
 
@@ -254,4 +253,3 @@ if __name__ == "__main__":
     app.run(port=5000, debug=True)
 
 
-## send en byte med størrelse 200 + lengden av brick_Type_id om den er tall
