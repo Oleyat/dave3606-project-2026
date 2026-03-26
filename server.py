@@ -9,6 +9,9 @@ from database import Database
 
 app = Flask(__name__)
 
+set_cache = {}
+MAX_CACHE_SIZE = 100
+
 def get_all_sets(db, page=1, limit=50): #returns fully rendered html string with all sets
     offset = (page - 1) * limit
     rows = []
@@ -149,8 +152,6 @@ def legoSet():  # We don't want to call the function `set`, since that would hid
     return Response(template)
 
 
-set_cache = {}
-MAX_CACHE_SIZE = 100
 
 @app.route("/api/set")
 def apiSet():
