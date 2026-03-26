@@ -1,6 +1,6 @@
 import json
 import gzip
-from server import app, get_next_sets_forward, get_next_sets_backward, get_set_and_inventory, encode_page_html
+from server import app, get_next_sets_forward, get_next_sets_backward, get_set_and_inventory, encode_page_html, serialize_set_to_binary_data
 
 class MockDB:
     def __init__(self, expected_query, expected_params, fake_rows): #what moch should expect and return
@@ -344,3 +344,27 @@ def test_encode_page_html_utf16(): #checks that valid encoding works
     assert used_encoding == "UTF-16"
     assert "UTF-16" in decoded
     assert "<h1>Hei</h1>" in decoded
+
+def test_serialize_set_to_binary_data_returns_bytes(): #weak test to check return is bytes and not empty
+    result = {
+        "set_id": "1",
+        "name": "Set 1",
+        "year": "2020",
+        "category": "City",
+        "preview_image_url": "http://example.com/set.jpg",
+        "inventory": [
+            {
+                "brick_type_id": "123",
+                "color_id": "10",
+                "count": "2",
+                "brick_name": "Brick A",
+                "preview_image_url": "http://example.com/456.jpg"
+            }
+        ]
+    }
+
+    data = serialize_set_to_binary_data(result)
+
+    assert isinstance(data, bytes)
+    assert len(data) > 0
+
