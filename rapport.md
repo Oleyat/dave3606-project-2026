@@ -85,12 +85,16 @@ Dermed ender vi opp med følgende filformat:
 |--|--|--|--|--|--|--|--|--|--|--|--|
 | Bytes | Minst 1| Minst 1 |Minst 1|2|Minst 1|Minst 1|Minst 1|1 |2 & 1| 1|Minst 1|
 | Format | Variabel først >B for antall farger, deretter >B for fargeid, >B for len farge navn, Variabel, 255 tegn for farge navnet.|Variabel, max 255 tegn | Variabel, max 255 tegn | >H | Variabel, max 255 tegn | Variabel, max 255 tegn |Variabel, max 255 tegn & >B eller >H|>B| >B & >H| >B | Variabel, max 255 tegn|
-######    kontroll brukes som signal byte for color_id, count, og brick_type_id sine optimaliseringer.
-> preview_image_url kommer fra lego_set og lego brikkene, USIKKER OM VI SKAL HA DEN MED FOR BRIKKER 
+> preview_image_url kommer fra lego_set og lego brikkene, 
 
 For eksempel for lego-set: `71799-1` i browser får du da respons på ca `441`kb mens med vår binær respons får du kun `81`kb.
 > Uten brick_name får vi ned til 16867 bytes.
-
+Filformatet ser slikt ut:
+> `<B length color_map> <color_map> <B length id> <id> <B length name> <name> <H year> <B length preview_image_url> <preview_image_url> <B length category> <category>`
+> FOR HVER INVENTORY ITEM:` <B kontroll byte> <B color_id> <H count> ELLER <B color_id> <B count>`
+> `<H brick_type_id>` ELLER ` <I brick_type_id> `ELLER` <b length brick_type_id> <brick_type_id>`
+> `<H brick_image_url>` ELLER `<I brick_image_url>` ELLER `<b length brick_image_url> <brick_image_url>`
+> `<B length brick_name> <brick_name>`
 
 ## 6. Frontend and Caching
 
