@@ -127,7 +127,7 @@ def get_set_and_inventory(db, set_id): #returns a json string with information a
         for row in rows:
             result["inventory"].append({
             "brick_type_id": html.escape(str(row[5] or "")),
-            "color_id": html.escape(str(row[6] or "")),
+            "color_id": html.escape(str(row[6])),
             "count": html.escape(str(row[7] or "")),
             "brick_name": html.escape(str(row[8] or "")),
             "preview_image_url": html.escape(str(row[9] or ""))
@@ -154,6 +154,10 @@ def fixLenStruct(format, *value):
 
 def serialize_set_to_binary_data(result):
     data = []
+    colormap = {0 : ""}
+    colbuild = []
+    doublecol = ["Dark", "Light", "Bright", "Medium"]
+
     data.append(varlenStruct(">B", result["set_id"]))
     data.append(varlenStruct(">B", result["name"])) 
     data.append(fixLenStruct(">H", int(result["year"])))
@@ -189,7 +193,29 @@ def serialize_set_to_binary_data(result):
         else:
             data.append(varlenStruct(">B", siste_del))
             data.append(fixLenStruct(">B", linklen)) #link
-        data.append(varlenStruct(">B", row["brick_name"]))
+
+        namesplit = row["brick_name"].split(" ")
+        if int(row["color_id"]) == 0:
+            newbrickname = row["brick_name"]
+        else:
+            if namesplit[0] in doublecol:
+                color = f"{namesplit[0]} {namesplit[1]}"
+                color_id = int(row["color_id"])
+                if color_id not in colormap:
+                    colormap[color_id] = color 
+            else:
+                color = namesplit[0]
+                color_id = int(row["color_id"])
+                if color_id not in colormap:
+                    colormap[color_id] = color 
+            newbrickname = row["brick_name"].replace(color, "").strip()
+        data.append(varlenStruct(">B", newbrickname))
+
+    for cid, cname in colormap.items():
+        colbuild.append(fixLenStruct(">B", cid))
+        colbuild.append(varlenStruct(">B", cname))
+    colbuild.insert(0, fixLenStruct(">H", len(colormap)))
+    data.insert(0, b"".join(colbuild)) #color cache
     return  b"".join(data)
 
 @app.route("/")
