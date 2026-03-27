@@ -127,7 +127,7 @@ def get_set_and_inventory(db, set_id): #returns a json string with information a
         for row in rows:
             result["inventory"].append({
             "brick_type_id": html.escape(str(row[5] or "")),
-            "color_id": html.escape(str(row[6] or "")),
+            "color_id": html.escape(str(row[6])),
             "count": html.escape(str(row[7] or "")),
             "brick_name": html.escape(str(row[8] or "")),
             "preview_image_url": html.escape(str(row[9] or ""))
