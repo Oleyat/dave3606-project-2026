@@ -141,3 +141,6 @@ Med cache = 0.000062s
 
 
 Grunnet en mistforståelse av oppgaven ble det laget testing for funksjonene som var seperate fra endpointsene, disse er tilgjengelige under test_funk_server.py. Testene undersøker håndteringer av spørringer, nullverdier, null rader, encodings preferanser og gjennomføringen av cursor pagineringen. Resultatene fra testene bidro til å oppdage feil i lagringen av next_cursor og forward_cursor samt håndtering av nullverdier. 
+
+Ellers tester vi de tre endpointene i test_server.py, vi bruker innebygd unittest biblioteket til python og lager en mock-db for å sjekke opp mot falske verdier og verifiserer at SQL spørringene returnerer riktig verider.
+
