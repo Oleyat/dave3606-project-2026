@@ -92,8 +92,8 @@ For eksempel for lego-set: `71799-1` i browser får du da respons på ca `441`kb
 Filformatet ser slikt ut:
 > `<B length color_map> <color_map> <B length id> <id> <B length name> <name> <H year> <B length preview_image_url> <preview_image_url> <B length category> <category>`
 > FOR HVER INVENTORY ITEM:` <B kontroll byte> <B color_id> <H count> ELLER <B color_id> <B count>`
-> `<H brick_type_id>` ELLER ` <I brick_type_id> `ELLER` <b length brick_type_id> <brick_type_id>`
-> `<H brick_image_url>` ELLER `<I brick_image_url>` ELLER `<b length brick_image_url> <brick_image_url>`
+> `<B kontroll byte> <H brick_type_id>` ELLER `<B kontroll byte> <I brick_type_id> `ELLER` <b length brick_type_id> <brick_type_id>`
+> `<B kontroll byte> <H brick_image_url>` ELLER `<B kontroll byte> <I brick_image_url>` ELLER `<b length brick_image_url> <brick_image_url>`
 > `<B length brick_name> <brick_name>`
 
 ## 6. Frontend and Caching
