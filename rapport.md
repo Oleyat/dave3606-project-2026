@@ -46,7 +46,7 @@ Ved testing av spørringene før og etter opprettelsen av indekser på lego_inve
 
 ## 3. Algorithmic complexity improvements
 
-I den originale algoritmen tar håndteringen av endepunktet http://localhost:5000/sets omtrent 4,332 sekunder, hovedsakelig grunnet den høye kompleksiteten ved sammensettingen av radstrenger. Kodelinjen `rows = existing_rows + f'<tr><td><a....,`  må  først  kopiere  over  de  eksisterende  radene  før  den  slås  sammen  med  den  nye  raden,  noe  som  gir  denne  linjen  en  kompleksitet  på  O(n^2^).  De  andre  elementene  i  funksjonen  har  lavere  kompleksitet,  dermed  er  den  samlede  kompleksiteten  O(n^2^).  Bare  ved  å  definere  rows  som  er  liste  og  bruke  append  fremfor  konkatinering  av  strenger  tar  håndteringen  bare  115,0  ms  sekunder,  noe  som  senkes  ytterlige  til  50,19  ms  sekunder  når  man  tar  i  bruk  paginering.  For å sikre konstant tidskompleksitet uavhengig av posisjon i listen og stabilitet ved endring av data byttet vi fra paginering med offset til cursor paginering.
+I den originale algoritmen tar håndteringen av endepunktet http://localhost:5000/sets omtrent 4,332 sekunder, hovedsakelig grunnet den høye kompleksiteten ved sammensettingen av radstrenger. Kodelinjen `rows = existing_rows + f'<tr><td><a....,`  må  først  kopiere  over  de  eksisterende  radene  før  den  slås  sammen  med  den  nye  raden,  noe  som  gir  denne  linjen  en  kompleksitet  på  O(n^2^).  De  andre  elementene  i  funksjonen  har  lavere  kompleksitet,  dermed  er  den  samlede  kompleksiteten  O(n^2^).  Bare  ved  å  definere  rows  som  er  liste  og  bruke  append  fremfor  konkatinering  av  strenger  tar  håndteringen  bare  115,0  ms  sekunder,  noe  som  senkes  ytterlige  til  50,19  ms  sekunder  når  man  tar  i  bruk  paginering.  For å sikre konstant tidskompleksitet uavhengig av posisjon i listen og stabilitet ved endring av data, byttet vi fra paginering med offset til cursor paginering.
 
   
   
@@ -123,4 +123,7 @@ Med cache = 0.000062s
   
   
 
-## 7
+## Testing and dependency injection
+
+
+Grunnet en mistforståelse av oppgaven ble det laget testing for funksjonene som var seperate fra endpointsene, disse er tilgjengelige under test_funk_server.py. Testene undersøker håndteringer av spørringer, nullverdier, null rader, encodings preferanser og gjennomføringen av cursor pagineringen. Resultatene fra testene bidro til å oppdage feil i lagringen av next_cursor og forward_cursor samt håndtering av nullverdier. 
