@@ -1,8 +1,21 @@
 
 ## 1: Database constraints
 
-Tabellen lego_brick kan enten ha en surrogatprimærnøkkel eller en naturlig primærnøkkel, der den naturlige PK består av to mulige kombinasjon av `brick_type_id` og `color_id`. For tabellen lego_inventory gjelder det samme med kombinasjonsnøkkel av `set_id`, `brick_type_id` og `color_id`, men grunnet flere kolonner i primærnøkkelen er det 6 permutasjoner for primærnøkkelen. Under er SQl koden for å sette primærnøklene i de to tabellene.
+Tabellen lego_set har en naturlig primærnøkkel i form av `id`. Mens tabellen lego_brick kan enten ha en surrogatprimærnøkkel eller en naturlig primærnøkkel, der den naturlige PK består av to mulige kombinasjon av `brick_type_id` og `color_id`. For tabellen lego_inventory gjelder det samme med kombinasjonsnøkkel av `set_id`, `brick_type_id` og `color_id`, men grunnet flere kolonner i primærnøkkelen er det 6 permutasjoner for primærnøkkelen. Under er SQl koden for å sette primærnøklene i de tre tabellene:
 
+```sql
+
+ALTER TABLE lego_set
+ADD PRIMARY KEY (id);
+
+ALTER TABLE lego_brick
+ADD PRIMARY KEY (brick_type_id, color_id);
+
+ALTER TABLE lego_inventory
+ADD PRIMARY KEY (set_id, brick_type_id, color_id);
+```
+
+Merk at migrate_database.py må endres ved å legge til primary key bitene i CREATE TABLE setningene for alle de tre tabellene.
   
 
 Rekkefølgen på primærnøkkelen i lego_brick tabellen gjør at spørringer filtrerer på `brick_type_id` vil kunne dra full nytte av primærnøkkelen og dermed være raskere. Primærnøkkelen til lego_inventory vil gjøre spørringer med joins basert på `set_id` raskere samt spørringer som filtrerer på `set_id`.
@@ -102,7 +115,8 @@ Vi har valgt å bruke LRU cache for å håndtere lagring av data i minnet. Det e
 
 Slik cachen vi lagde fungerer er at den har en størrelse på 100 elementer, og at den sjekker først om set_id er i cachen hvis den er der så bruker den: 
 
-```result = set_cache.pop(set_id)
+```
+        result = set_cache.pop(set_id)
         set_cache[set_id] = result
 ```
 
